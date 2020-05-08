@@ -1,7 +1,7 @@
 {
   "name": "@zelloptt/electron-hotkeys",
   "version": "0.0.0",
-  "description": "This package provides press/release callbacks for system-wide hotkeys",
+  "description": "This package provides press/release callbacks for system-wide hotkeys on Windows",
   "main": "index.js",
   "gypfile": true,
   "scripts": {
