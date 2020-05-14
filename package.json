@@ -1,5 +1,5 @@
 {
-  "name": "@zelloptt/electron-hotkeys",
+  "name": "@zelloptt/desktop-hotkeys",
   "version": "0.0.0",
   "description": "This package provides press/release callbacks for system-wide hotkeys on Windows",
   "main": "index.js",
@@ -13,7 +13,7 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zelloptt/globalhotkeys.git"
+    "url": "git+https://github.com/zelloptt/desktop-hotkeys.git"
   },
   "keywords": [
     "GlobalHotkey"
@@ -23,9 +23,9 @@
     "access": "public"
   },
   "bugs": {
-    "url": "https://github.com/zelloptt/issues"
+    "url": "https://github.com/zelloptt/desktop-hotkeys/issues"
   },
-  "homepage": "https://github.com/zelloptt/globalhotkeys#readme",
+  "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
   "devDependencies": {
     "node-gyp": "^6.1.0"
   },

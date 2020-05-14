@@ -5,10 +5,13 @@
 #include <process.h>
 #include <map>
 
+#define WM_REGISTER_HK		WM_USER + 0x11
+#define WM_UNREGISTER_HK	WM_USER + 0x12
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-class CHotKeyManager;
-static CHotKeyManager* g_pHKManager;
+class HotKeyManager;
+static HotKeyManager* g_pHKManager;
 static bool g_bVerboseMode = false;
 
 bool log(const char* format, ...)
@@ -23,30 +26,28 @@ bool log(const char* format, ...)
 	return status;
 }
 
-
-
-class CHotKeyManager
+class HotKeyManager
 {
-	HANDLE m_hThread;
-	HANDLE m_hStartEvent;
-	unsigned m_uThreadId;
-	HWND m_hWnd;
+	HANDLE _hThread;
+	HANDLE _hStartEvent;
+	unsigned _uThreadId;
+	HWND _hWnd;
 	typedef std::map<unsigned, std::pair<Napi::ThreadSafeFunction, Napi::ThreadSafeFunction>> TCONT;
-	TCONT m_mp;
+	TCONT _hotkeys;
 public:
 	static unsigned __stdcall winThread(void* ptr)
 	{
-		CHotKeyManager* pThis = reinterpret_cast<CHotKeyManager*>(ptr);
-		static const char* class_name = "ZelloHotKeyManager_class";
+		HotKeyManager* pThis = reinterpret_cast<HotKeyManager*>(ptr);
+		static const char* class_name = "HotKeyManager_class";
 		WNDCLASSEX wx = {};
 		wx.cbSize = sizeof(WNDCLASSEX);
 		wx.lpfnWndProc = WndProc;
 		wx.hInstance = ::GetModuleHandle(NULL);
 		wx.lpszClassName = class_name;
 		if (RegisterClassEx(&wx)) {
-			pThis->m_hWnd = CreateWindowEx(0, class_name, "no title", 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, NULL, NULL);
+			pThis->_hWnd = CreateWindowEx(0, class_name, "no title", 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, NULL, NULL);
 		}
-		SetEvent(pThis->m_hStartEvent);
+		SetEvent(pThis->_hStartEvent);
 		MSG msg;
 		while (GetMessage(&msg, NULL, 0, 0)) {
 			TranslateMessage(&msg);
@@ -55,41 +56,44 @@ public:
 		return 0;
 	}
 
-	CHotKeyManager()
+	HotKeyManager()
 	{
-		m_hStartEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-		m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(NULL, 0, winThread, this, 0, &m_uThreadId));
-		if (m_hThread && m_uThreadId) {
-			WaitForSingleObject(m_hStartEvent, INFINITE);
+		_hStartEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+		_hThread = reinterpret_cast<HANDLE>(_beginthreadex(NULL, 0, winThread, this, 0, &_uThreadId));
+		if (_hThread && _uThreadId) {
+			WaitForSingleObject(_hStartEvent, INFINITE);
 		}
-		CloseHandle(m_hStartEvent);
-		m_hStartEvent = NULL;
+		CloseHandle(_hStartEvent);
+		_hStartEvent = NULL;
 	}
-	~CHotKeyManager()
+
+	~HotKeyManager()
 	{
-		if (m_hThread && m_uThreadId) {
-			PostThreadMessage(m_uThreadId, WM_QUIT, (WPARAM)NULL, (LPARAM)NULL);
-			WaitForSingleObject(m_hThread, 5000);
-			CloseHandle(m_hThread);
+		if (_hThread && _uThreadId) {
+			PostThreadMessage(_uThreadId, WM_QUIT, (WPARAM)NULL, (LPARAM)NULL);
+			WaitForSingleObject(_hThread, 5000);
+			CloseHandle(_hThread);
 		}
 	}
 
 	bool Valid() const
 	{
-		return m_uThreadId != 0 && m_hWnd != NULL;
+		return _uThreadId != 0 && _hWnd != NULL;
 	}
+
 	void NotifyHKEvent(unsigned uCode, bool bPressed)
 	{
-		TCONT::iterator cit = m_mp.find(uCode);
-		if (cit != m_mp.end()) {
+		TCONT::iterator cit = _hotkeys.find(uCode);
+		if (cit != _hotkeys.end()) {
 			Napi::ThreadSafeFunction& tsfn = bPressed ? cit->second.first : cit->second.second;
 			tsfn.NonBlockingCall();
 		}
 	}
+
 	void UpdateCallbacks(unsigned uCode, bool bSetInUse)
 	{
-		TCONT::iterator cit = m_mp.find(uCode);
-		if (cit != m_mp.end()) {
+		TCONT::iterator cit = _hotkeys.find(uCode);
+		if (cit != _hotkeys.end()) {
 			if (bSetInUse) {
 				cit->second.first.Acquire();
 				cit->second.second.Acquire();
@@ -99,19 +103,20 @@ public:
 			}
 		}
 	}
+
 	DWORD registerShortcut(WORD wKeyCode, WORD wMod, const Napi::ThreadSafeFunction& tsfPress, const Napi::ThreadSafeFunction& tsfRelease)
 	{
 		DWORD dwId = 0;
 		if (Valid()) {
 			WPARAM wParam = MAKEWPARAM(wKeyCode, wMod);
-			std::string s("Zello Desktop hk#");
+			std::string s("DesktopHotkey#");
 			char buf[32] = { 0 };
 			s.append(itoa(wParam, buf, 16));
 			ATOM atm = GlobalAddAtomA(s.c_str());
 			if (atm) {
-				m_mp.insert(std::make_pair(atm, std::make_pair(tsfPress, tsfRelease)));
-				//m_mp[atm] = std::make_pair(tsfPress, tsfRelease);
-				if (0 != SendMessage(m_hWnd, WM_USER + 0x11, wParam, atm)) {
+				//_hotkeys.insert(std::make_pair(atm, std::make_pair(tsfPress, tsfRelease)));
+				_hotkeys[atm] = std::make_pair(tsfPress, tsfRelease);
+				if (0 != SendMessage(_hWnd, WM_REGISTER_HK, wParam, atm)) {
 					dwId = atm;
 				} else {
 					GlobalDeleteAtom(atm);
@@ -120,22 +125,24 @@ public:
 		}
 		return dwId;
 	}
+
 	DWORD unregisterShortcut(DWORD dwId)
 	{
 		DWORD dwRet = 0;
-		TCONT::iterator it = m_mp.find(dwId);
-		if (it != m_mp.end()) {
+		TCONT::iterator it = _hotkeys.find(dwId);
+		if (it != _hotkeys.end()) {
 			ATOM atm = dwId;
 			GlobalDeleteAtom(atm);
-			SendMessage(m_hWnd, WM_USER + 0x12, dwId, 0);
-			m_mp.erase(it);
+			SendMessage(_hWnd, WM_UNREGISTER_HK, dwId, 0);
+			_hotkeys.erase(it);
 		}
 		return dwRet;
 	}
+
 	DWORD unregisterAllShortcuts()
 	{
-		while (!m_mp.empty()) {
-			unregisterShortcut(m_mp.begin()->first);
+		while (!_hotkeys.empty()) {
+			unregisterShortcut(_hotkeys.begin()->first);
 		}
 		return 0;
 	}
@@ -143,9 +150,9 @@ public:
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	static DWORD uPushedKey = 0;
-	static unsigned uPushedCode = 0;
-	static UINT_PTR g_TimerId = 0;
+	static DWORD pushedKey = 0;
+	static unsigned pushedCode = 0;
+	static UINT_PTR timerId = 0;
 	switch (message) {
 		case WM_DESTROY:
 			PostQuitMessage(0);
@@ -153,10 +160,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case WM_CREATE:
 		{
 			SetLastError(0);
-
 			break;
 		}
-		case WM_USER + 0x11:
+		case WM_REGISTER_HK:
 		{
 			SetLastError(0);
 			BOOL b = ::RegisterHotKey(hWnd, lParam, HIWORD(wParam) | MOD_NOREPEAT, LOWORD(wParam));
@@ -164,7 +170,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			return b ? lParam : 0;
 			break;
 		}
-		case WM_USER + 0x12:
+		case WM_UNREGISTER_HK:
 		{
 			SetLastError(0);
 			BOOL b = ::UnregisterHotKey(hWnd, wParam);
@@ -173,35 +179,35 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		case WM_HOTKEY:
 		{
-			if (g_TimerId != 0) {
-				if (g_TimerId == wParam) {
-					log("HK: skip evt%d: already active\r\n", g_TimerId);
+			if (timerId != 0) {
+				if (timerId == wParam) {
+					log("(DHK): skip evt%d: already active\r\n", timerId);
 					return 0;
 				} else {
-					log("HK: force evt%d cancel: switch\r\n", g_TimerId);
-					KillTimer(hWnd, g_TimerId);
-					g_pHKManager->NotifyHKEvent(g_TimerId, false);
+					log("(DHK): force evt%d cancel: switch\r\n", timerId);
+					KillTimer(hWnd, timerId);
+					g_pHKManager->NotifyHKEvent(timerId, false);
 				}
 			}
 			unsigned uKeyCode = wParam;
-			uPushedKey = HIWORD(lParam);
-			uPushedCode = wParam;
+			pushedKey = HIWORD(lParam);
+			pushedCode = wParam;
 			g_pHKManager->NotifyHKEvent(wParam, true);
-			g_TimerId = SetTimer(hWnd, wParam, 100, NULL);
-			log("HK: new evt%d activated\r\n", g_TimerId);
+			timerId = SetTimer(hWnd, wParam, 100, NULL);
+			log("(DHK): new evt%d activated\r\n", timerId);
 			break;
 		}
 		case WM_TIMER:
 		{
-			SHORT keyState = GetAsyncKeyState(uPushedKey);
+			SHORT keyState = GetAsyncKeyState(pushedKey);
 			if (keyState >= 0) {
-				KillTimer(hWnd, g_TimerId);
-				g_pHKManager->NotifyHKEvent(uPushedCode, false);
-				g_TimerId = 0;
-				log("HK: evt%d deactivated\r\n", uPushedCode);
+				KillTimer(hWnd, timerId);
+				g_pHKManager->NotifyHKEvent(pushedCode, false);
+				timerId = 0;
+				log("(DHK): evt%d deactivated\r\n", pushedCode);
 
 			} else {
-				log("HK: evt%d cont(%d) \r\n", uPushedCode, keyState);
+				log("(DHK): evt%d cont(%d) \r\n", pushedCode, keyState);
 			}
 			break;
 		}
@@ -216,10 +222,10 @@ Napi::Number HK::start(const Napi::CallbackInfo& info)
 	Napi::Env env = info.Env();
 	if (info.Length() > 0 && info[0].IsBoolean()) {
 		g_bVerboseMode = info[0].As<Napi::Boolean>();
-		log("HK: Starting verbose module");
+		log("(DHK): Starting module, verbose logging is on");
 	}
 	if (g_pHKManager == NULL) {
-		g_pHKManager = new CHotKeyManager();
+		g_pHKManager = new HotKeyManager();
 	}
 	return Napi::Number::New(env, g_pHKManager->Valid() ? 1 : 0);
 }
@@ -239,12 +245,19 @@ Napi::Number HK::stop(const Napi::CallbackInfo& info)
 Napi::Number HK::registerShortcut(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
-	if (info.Length() < 3 || !info[0].IsArray() || !info[1].IsFunction() || !info[2].IsFunction()) {
-		Napi::TypeError::New(env, "Array/Function/Function expected").ThrowAsJavaScriptException();
+	Napi::Array arrKeys;
+	Napi::Function fnPressed;
+	Napi::Function fnReleased;
+	if (info.Length() >= 3 && info[0].IsArray() && info[1].IsFunction() && info[2].IsFunction()) {
+		arrKeys = info[0].As<Napi::Array>();
+		fnPressed = info[1].As<Napi::Function>();
+		fnReleased = info[2].As<Napi::Function>();
+	} else if (info.Length() == 2 && info[0].IsArray() && info[1].IsFunction()) {
+		arrKeys = info[0].As<Napi::Array>();
+		fnPressed = info[1].As<Napi::Function>();
+	} else {
+		Napi::TypeError::New(env, "invalid arguments: Array/Function/Function or Array/Function expected").ThrowAsJavaScriptException();
 	}
-	Napi::Array arrKeys = info[0].As<Napi::Array>();
-	Napi::Function fnPressed = info[1].As<Napi::Function>();
-	Napi::Function fnReleased = info[2].As<Napi::Function>();
 
 	WORD wKeyCode = 0, wMod = 0;
 	for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
@@ -287,19 +300,18 @@ Napi::Number HK::registerShortcut(const Napi::CallbackInfo& info)
 		uRetValue = g_pHKManager->registerShortcut(wKeyCode, wMod,
 			Napi::ThreadSafeFunction::New(
 				env,
-				fnPressed,  // JavaScript function called asynchronously
-				"ZelloDesktop hotkey pressed cb",         // Name
-				0,                       // Unlimited queue
+				fnPressed,
+				"desktop-hotkeys pressed cb",
+				0,
 				2),
 			Napi::ThreadSafeFunction::New(
 				env,
-				fnReleased,  // JavaScript function called asynchronously
-				"ZelloDesktop hotkey released cb ",         // Name
-				0,                       // Unlimited queue
+				fnReleased,
+				"desktop-hotkeys released cb ",
+				0,
 				2)
 		);
 	}
-
 	return Napi::Number::New(env, uRetValue);
 }
 
@@ -307,7 +319,7 @@ Napi::Number HK::unregisterShortcut(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
 	if (info.Length() < 1 || !info[0].IsNumber()) {
-		Napi::TypeError::New(env, "Hotkey id expected").ThrowAsJavaScriptException();
+		Napi::TypeError::New(env, "Invalid argument: Hotkey id expected").ThrowAsJavaScriptException();
 	}
 	unsigned uRetValue = static_cast<unsigned>(-1);
 	if (g_pHKManager && g_pHKManager->Valid()) {

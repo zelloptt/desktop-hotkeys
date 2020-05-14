@@ -1,7 +1,7 @@
 
 {
     "targets": [{
-        "target_name": "electron-hotkeys",
+        "target_name": "desktophotkeys",
         "cflags!": [ "-fno-exceptions" ],
         "cflags_cc!": [ "-fno-exceptions" ],
         "sources": [

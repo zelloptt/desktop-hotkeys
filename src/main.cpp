@@ -8,4 +8,4 @@ Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 	return doInitHK(env, exports);
 }
 
-NODE_API_MODULE(globalhotkeys, InitAll)
+NODE_API_MODULE(desktophotkeys, InitAll)

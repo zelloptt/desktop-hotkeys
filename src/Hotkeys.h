@@ -10,4 +10,3 @@ namespace HK
 }
 
 Napi::Object doInitHK(Napi::Env env, Napi::Object exports);
-
