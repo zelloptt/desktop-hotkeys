@@ -5,13 +5,13 @@
 #include <process.h>
 #include <map>
 
-#define WM_REGISTER_HK		WM_USER + 0x11
-#define WM_UNREGISTER_HK	WM_USER + 0x12
+#define WM_REGISTER_HOTKEY	WM_USER + 0x11
+#define WM_UNREGISTER_HOTKEY	WM_USER + 0x12
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 class HotKeyManager;
-static HotKeyManager* g_pHKManager;
+static HotKeyManager* g_pHotKeyManager = NULL;
 static bool g_bVerboseMode = false;
 
 bool log(const char* format, ...)
@@ -81,7 +81,7 @@ public:
 		return _uThreadId != 0 && _hWnd != NULL;
 	}
 
-	void NotifyHKEvent(unsigned uCode, bool bPressed)
+	void NotifyHotKeyEvent(unsigned uCode, bool bPressed)
 	{
 		TCONT::iterator cit = _hotkeys.find(uCode);
 		if (cit != _hotkeys.end()) {
@@ -114,9 +114,8 @@ public:
 			s.append(itoa(wParam, buf, 16));
 			ATOM atm = GlobalAddAtomA(s.c_str());
 			if (atm) {
-				//_hotkeys.insert(std::make_pair(atm, std::make_pair(tsfPress, tsfRelease)));
 				_hotkeys[atm] = std::make_pair(tsfPress, tsfRelease);
-				if (0 != SendMessage(_hWnd, WM_REGISTER_HK, wParam, atm)) {
+				if (0 != SendMessage(_hWnd, WM_REGISTER_HOTKEY, wParam, atm)) {
 					dwId = atm;
 				} else {
 					GlobalDeleteAtom(atm);
@@ -133,7 +132,7 @@ public:
 		if (it != _hotkeys.end()) {
 			ATOM atm = dwId;
 			GlobalDeleteAtom(atm);
-			SendMessage(_hWnd, WM_UNREGISTER_HK, dwId, 0);
+			SendMessage(_hWnd, WM_UNREGISTER_HOTKEY, dwId, 0);
 			_hotkeys.erase(it);
 		}
 		return dwRet;
@@ -162,7 +161,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			SetLastError(0);
 			break;
 		}
-		case WM_REGISTER_HK:
+		case WM_REGISTER_HOTKEY:
 		{
 			SetLastError(0);
 			BOOL b = ::RegisterHotKey(hWnd, lParam, HIWORD(wParam) | MOD_NOREPEAT, LOWORD(wParam));
@@ -170,7 +169,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			return b ? lParam : 0;
 			break;
 		}
-		case WM_UNREGISTER_HK:
+		case WM_UNREGISTER_HOTKEY:
 		{
 			SetLastError(0);
 			BOOL b = ::UnregisterHotKey(hWnd, wParam);
@@ -186,13 +185,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				} else {
 					log("(DHK): force evt%d cancel: switch\r\n", timerId);
 					KillTimer(hWnd, timerId);
-					g_pHKManager->NotifyHKEvent(timerId, false);
+					g_pHotKeyManager->NotifyHotKeyEvent(timerId, false);
 				}
 			}
 			unsigned uKeyCode = wParam;
 			pushedKey = HIWORD(lParam);
 			pushedCode = wParam;
-			g_pHKManager->NotifyHKEvent(wParam, true);
+			g_pHotKeyManager->NotifyHotKeyEvent(wParam, true);
 			timerId = SetTimer(hWnd, wParam, 100, NULL);
 			log("(DHK): new evt%d activated\r\n", timerId);
 			break;
@@ -202,7 +201,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			SHORT keyState = GetAsyncKeyState(pushedKey);
 			if (keyState >= 0) {
 				KillTimer(hWnd, timerId);
-				g_pHKManager->NotifyHKEvent(pushedCode, false);
+				g_pHotKeyManager->NotifyHotKeyEvent(pushedCode, false);
 				timerId = 0;
 				log("(DHK): evt%d deactivated\r\n", pushedCode);
 
@@ -217,41 +216,45 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-Napi::Number HK::start(const Napi::CallbackInfo& info)
+Napi::Number HotKeys::start(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
 	if (info.Length() > 0 && info[0].IsBoolean()) {
 		g_bVerboseMode = info[0].As<Napi::Boolean>();
 		log("(DHK): Starting module, verbose logging is on");
 	}
-	if (g_pHKManager == NULL) {
-		g_pHKManager = new HotKeyManager();
+	if (g_pHotKeyManager == NULL) {
+		g_pHotKeyManager = new HotKeyManager();
 	}
-	return Napi::Number::New(env, g_pHKManager->Valid() ? 1 : 0);
+	return Napi::Number::New(env, g_pHotKeyManager->Valid() ? 1 : 0);
 }
 
-Napi::Number HK::stop(const Napi::CallbackInfo& info)
+Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
 	unsigned uRetVal = 0;
-	if (g_pHKManager) {
-		delete g_pHKManager;
-		g_pHKManager = NULL;
+	if (g_pHotKeyManager) {
+		delete g_pHotKeyManager;
+		g_pHotKeyManager = NULL;
 		uRetVal = 1;
 	}
 	return Napi::Number::New(env, uRetVal);
 }
 
-Napi::Number HK::registerShortcut(const Napi::CallbackInfo& info)
+Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
 	Napi::Array arrKeys;
 	Napi::Function fnPressed;
 	Napi::Function fnReleased;
+	bool keysAreVirtualCodes = false;
 	if (info.Length() >= 3 && info[0].IsArray() && info[1].IsFunction() && info[2].IsFunction()) {
 		arrKeys = info[0].As<Napi::Array>();
 		fnPressed = info[1].As<Napi::Function>();
 		fnReleased = info[2].As<Napi::Function>();
+		if (info.Length() >= 4 && info[3].IsBoolean()) {
+			keysAreVirtualCodes = info[3].As<Napi::Boolean>();
+		}
 	} else if (info.Length() == 2 && info[0].IsArray() && info[1].IsFunction()) {
 		arrKeys = info[0].As<Napi::Array>();
 		fnPressed = info[1].As<Napi::Function>();
@@ -262,13 +265,17 @@ Napi::Number HK::registerShortcut(const Napi::CallbackInfo& info)
 	WORD wKeyCode = 0, wMod = 0;
 	for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
 		Napi::Value v = arrKeys[idx];
-		DWORD dwScanCode = v.As<Napi::Number>().Uint32Value();
-		DWORD dw = MapVirtualKey(dwScanCode, MAPVK_VSC_TO_VK);
+		DWORD dwCode = v.As<Napi::Number>().Uint32Value();
+		DWORD dw = keysAreVirtualCodes ? dwCode : MapVirtualKey(dwCode, MAPVK_VSC_TO_VK);
 		switch (dw) {
 			case 0:
 			{
 				char szErrBuf[64];
-				sprintf(szErrBuf, "Can't convert scancode %d(%X) to VKCode", dwScanCode, dwScanCode);
+				if (keysAreVirtualCodes) {
+					sprintf(szErrBuf, "invalid arguments: virtual key code cannot be 0");
+				} else {
+					sprintf(szErrBuf, "Can't convert scancode %d(%X) to VKCode", dwCode, dwCode);
+				}
 				Napi::Error::New(env, szErrBuf).ThrowAsJavaScriptException();
 			}
 			break;
@@ -296,8 +303,8 @@ Napi::Number HK::registerShortcut(const Napi::CallbackInfo& info)
 		}
 	}
 	unsigned uRetValue = 0;
-	if (g_pHKManager && g_pHKManager->Valid()) {
-		uRetValue = g_pHKManager->registerShortcut(wKeyCode, wMod,
+	if (g_pHotKeyManager && g_pHotKeyManager->Valid()) {
+		uRetValue = g_pHotKeyManager->registerShortcut(wKeyCode, wMod,
 			Napi::ThreadSafeFunction::New(
 				env,
 				fnPressed,
@@ -315,35 +322,35 @@ Napi::Number HK::registerShortcut(const Napi::CallbackInfo& info)
 	return Napi::Number::New(env, uRetValue);
 }
 
-Napi::Number HK::unregisterShortcut(const Napi::CallbackInfo& info)
+Napi::Number HotKeys::unregisterShortcut(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
 	if (info.Length() < 1 || !info[0].IsNumber()) {
 		Napi::TypeError::New(env, "Invalid argument: Hotkey id expected").ThrowAsJavaScriptException();
 	}
 	unsigned uRetValue = static_cast<unsigned>(-1);
-	if (g_pHKManager && g_pHKManager->Valid()) {
-		uRetValue = g_pHKManager->unregisterShortcut(info[0].As<Napi::Number>().Uint32Value());
+	if (g_pHotKeyManager && g_pHotKeyManager->Valid()) {
+		uRetValue = g_pHotKeyManager->unregisterShortcut(info[0].As<Napi::Number>().Uint32Value());
 	}
 	return Napi::Number::New(env, uRetValue);
 }
 
-Napi::Number HK::unregisterAllShortcuts(const Napi::CallbackInfo& info)
+Napi::Number HotKeys::unregisterAllShortcuts(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
 	unsigned uRetValue = static_cast<unsigned>(-1);
-	if (g_pHKManager && g_pHKManager->Valid()) {
-		uRetValue = g_pHKManager->unregisterAllShortcuts();
+	if (g_pHotKeyManager && g_pHotKeyManager->Valid()) {
+		uRetValue = g_pHotKeyManager->unregisterAllShortcuts();
 	}
 	return Napi::Number::New(env, uRetValue);
 }
 
-Napi::Object doInitHK(Napi::Env env, Napi::Object exports)
+Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 {
-	exports.Set("start", Napi::Function::New(env, HK::start));
-	exports.Set("stop", Napi::Function::New(env, HK::stop));
-	exports.Set("registerShortcut", Napi::Function::New(env, HK::registerShortcut));
-	exports.Set("unregisterShortcut", Napi::Function::New(env, HK::unregisterShortcut));
-	exports.Set("unregisterAllShortcuts", Napi::Function::New(env, HK::unregisterAllShortcuts));
+	exports.Set("start", Napi::Function::New(env, HotKeys::start));
+	exports.Set("stop", Napi::Function::New(env, HotKeys::stop));
+	exports.Set("registerShortcut", Napi::Function::New(env, HotKeys::registerShortcut));
+	exports.Set("unregisterShortcut", Napi::Function::New(env, HotKeys::unregisterShortcut));
+	exports.Set("unregisterAllShortcuts", Napi::Function::New(env, HotKeys::unregisterAllShortcuts));
 	return exports;
 }

@@ -14,7 +14,6 @@ function fnPressed2() {
 }
 function fnReleased2() {
 	console.log('Hotkey#2 released');
-	console.log('unregisterShortcut returned ' + dh.unregisterShortcut(hk1));
 }
 
 console.log("desktop-hotkeys module started: " + dh.start(true));

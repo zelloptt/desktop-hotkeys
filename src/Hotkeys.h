@@ -1,6 +1,6 @@
 #include <napi.h>
 
-namespace HK
+namespace HotKeys
 {
 	Napi::Number start(const Napi::CallbackInfo& info);
 	Napi::Number stop(const Napi::CallbackInfo& info);
@@ -9,4 +9,4 @@ namespace HK
 	Napi::Number unregisterAllShortcuts(const Napi::CallbackInfo& info);
 }
 
-Napi::Object doInitHK(Napi::Env env, Napi::Object exports);
+Napi::Object InitAll(Napi::Env env, Napi::Object exports);
