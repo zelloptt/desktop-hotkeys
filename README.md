@@ -6,4 +6,4 @@ This package provides press/release callbacks for system-wide hotkeys on Windows
 ```npm install --save @zelloptt/desktop-hotkeys```
 
 ## Usage
-You can find minimal working sample at the sample subfolder
+You can find a minimal working sample in the ```sample``` subfolder
