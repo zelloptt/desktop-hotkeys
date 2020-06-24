@@ -1,0 +1,36 @@
+{
+  "name": "@zelloptt/desktop-hotkeys",
+  "version": "0.0.1",
+  "description": "This package provides press/release callbacks for system-wide hotkeys on Windows",
+  "main": "index.js",
+  "gypfile": true,
+  "scripts": {
+    "build": "node-gyp rebuild",
+    "clean": "node-gyp clean",
+    "install": "node-gyp-build",
+    "test": "echo \"Test not applicable\""
+  },
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zelloptt/desktop-hotkeys.git"
+  },
+  "keywords": [
+    "GlobalHotkey"
+  ],
+  "author": "Zello Inc",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/zelloptt/desktop-hotkeys/issues"
+  },
+  "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
+  "devDependencies": {
+    "node-gyp": "^6.1.0"
+  },
+  "dependencies": {
+    "node-addon-api": "^2.0.0",
+    "node-gyp-build": "^4.2.1"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "desktop-hotkeys-sample",
+  "version": "1.0.0",
+  "description": "desktop-hotkeys demo",
+  "main": "sample.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "demo"
+  ],
+  "dependencies": {
+    "desktop-hotkeys": "file:../."
+  },
+  "author": "Zello Inc",
+  "license": "ISC"
+}
