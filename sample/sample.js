@@ -1,5 +1,5 @@
 
-const dh = require('desktop-hotkeys');
+const dh = require('@zelloptt/desktop-hotkeys');
 var hk1;
 
 function fnPressed() {

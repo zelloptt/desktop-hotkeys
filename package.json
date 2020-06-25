@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "node-addon-api": "^2.0.0",
-    "node-gyp-build": "^4.2.1"
+    "node-gyp-build": "^4.2.1",
+    "np": "^6.2.4"
   }
 }
