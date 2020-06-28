@@ -1,6 +1,6 @@
 {
-  "name": "@zelloptt/desktop-hotkeys",
-  "version": "1.0.1",
+  "name": "desktop-hotkeys",
+  "version": "0.0.1",
   "description": "This package provides press/release callbacks for system-wide hotkeys on Windows",
   "main": "index.js",
   "gypfile": true,
@@ -29,9 +29,11 @@
   "devDependencies": {
     "node-gyp": "^6.1.0"
   },
+  "np": {
+    "yarn": false
+  },
   "dependencies": {
     "node-addon-api": "^2.0.0",
-    "node-gyp-build": "^4.2.1",
-    "np": "^6.2.4"
+    "node-gyp-build": "^4.2.1"
   }
 }
