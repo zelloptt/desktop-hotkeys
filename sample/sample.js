@@ -1,5 +1,5 @@
 
-const dh = require('@zelloptt/desktop-hotkeys');
+const dh = require('desktop-hotkeys');
 var hk1;
 
 function fnPressed() {
@@ -20,18 +20,21 @@ console.log("desktop-hotkeys module started: " + dh.start(true));
 
 // module accepts scancodes, you may find the examples at
 // https://www.win.tue.nl/~aeb/linux/kbd/scancodes-1.html
-const CTRL = 29;
-const ALT = 56;
-const F1 = 59;
-const F7 = 65;
-
-hk1 = dh.registerShortcut([ CTRL, ALT, F1 ], fnPressed, fnReleased)
+const CTRL = (process.platform === 'win32') ? 17 : 29;
+const ALT = (process.platform === 'win32') ? 18 : 56;
+const F1 = (process.platform === 'win32') ? 112 : 59;
+const F6 = F1 + 5;
+const F7 = F6 + 1;
+try {
+hk1 = dh.registerShortcut([ CTRL, ALT, F1 ], fnPressed, fnReleased, true)
 console.log('registerShortcut returned ' + hk1);
 
-const hk2 = dh.registerShortcut([ CTRL, ALT, F7 ], fnPressed2, fnReleased2)
+const hk2 = dh.registerShortcut([ CTRL, ALT, F7 ], fnPressed2, fnReleased2, true)
 console.log('2nd registerShortcut returned ' + hk2);
 
-dh.registerShortcut([ CTRL, ALT, 64 ], fnPressed2)
-
+ dh.registerShortcut([ CTRL, ALT, F6 ], fnPressed2)
+}catch (ex) {
+console.log('exception ' + ex);
+}
 console.log('waiting for hotkeys...');
 

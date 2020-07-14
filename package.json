@@ -32,10 +32,21 @@
   "np": {
     "yarn": false
   },
-  "os": [
-    "win32"
-  ],
+  "iohook": {
+    "targets": [
+      "electron-75"
+    ],
+    "platforms": [
+      "darwin",
+      "linux"
+    ],
+    "arches": [
+      "x64",
+      "ia32"
+    ]
+  },
   "dependencies": {
+    "iohook": "^0.6.6",
     "node-addon-api": "^2.0.0",
     "node-gyp-build": "^4.2.1"
   }

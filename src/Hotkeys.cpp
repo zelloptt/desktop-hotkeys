@@ -41,18 +41,29 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 	Napi::Function fnPressed;
 	Napi::Function fnReleased;
 	bool keysAreVirtualCodes = false;
-	if (info.Length() >= 3 && info[0].IsArray() && info[1].IsFunction() && info[2].IsFunction()) {
+	unsigned argCount = info.Length();
+	while (argCount > 0) {
+	    if (info[argCount - 1].IsEmpty() || info[argCount -1].IsUndefined() || info[argCount -1].IsNull()) {
+	        argCount = argCount -1;
+	    } else {
+	        break;
+	    }
+	}
+
+	if (argCount >= 3 && info[0].IsArray() && info[1].IsFunction() && info[2].IsFunction()) {
 		arrKeys = info[0].As<Napi::Array>();
 		fnPressed = info[1].As<Napi::Function>();
 		fnReleased = info[2].As<Napi::Function>();
-		if (info.Length() >= 4 && info[3].IsBoolean()) {
+		if (argCount >= 4 && info[3].IsBoolean()) {
 			keysAreVirtualCodes = info[3].As<Napi::Boolean>();
 		}
-	} else if (info.Length() == 2 && info[0].IsArray() && info[1].IsFunction()) {
+	} else if (argCount == 2 && info[0].IsArray() && info[1].IsFunction()) {
 		arrKeys = info[0].As<Napi::Array>();
 		fnPressed = info[1].As<Napi::Function>();
 	} else {
-		Napi::TypeError::New(env, "invalid arguments: Array/Function/Function or Array/Function expected").ThrowAsJavaScriptException();
+	    log("(DHK): invalid registerShortcut arguments: Array/Function/Function or Array/Function expected");
+		Napi::TypeError::New(env, "invalid registerShortcut arguments: Array/Function/Function or Array/Function expected").ThrowAsJavaScriptException();
+		return Napi::Number::New(env, 0);
 	}
 
 	WORD wKeyCode = 0, wMod = 0;
@@ -70,6 +81,7 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 					sprintf(szErrBuf, "Can't convert scancode %d(%X) to VKCode", dwCode, dwCode);
 				}
 				Napi::Error::New(env, szErrBuf).ThrowAsJavaScriptException();
+				return Napi::Number::New(env, 0);
 			}
 			break;
 			case VK_CONTROL:
