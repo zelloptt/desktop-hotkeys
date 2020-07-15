@@ -34,7 +34,8 @@
   },
   "iohook": {
     "targets": [
-      "electron-75"
+      "electron-75",
+      "node-72"
     ],
     "platforms": [
       "darwin",

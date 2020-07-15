@@ -6,6 +6,9 @@ class ShortcutHelper {
 			this.impl = require('node-gyp-build')(__dirname);
 		}
 		this.keyCodes = [];
+		this.fnKeyDown = this.onKeyDown.bind(this);
+		this.fnKeyUp = this.onKeyUp.bind(this);
+		this.keyCodePressed = 0;
 	}
 	start(enableLogger) {
 		return this.impl.start(enableLogger);
@@ -24,27 +27,44 @@ class ShortcutHelper {
 			throw new TypeError('win32 impl does not track the keys');
 		}
 		this.keyCodes = [];
-		this.impl.on('keydown', this.onKeyDown);
-		this.impl.on('keyup', this.onKeyUp);
+		this.impl.on('keydown', this.fnKeyDown);
+		this.impl.on('keyup', this.fnKeyUp);
+		console.log('KeydownCB list');
+		this.impl.rawListeners('keydown').forEach((value) => {
+			console.log('KeydownCB' + value.toString());
+		});
+
 		return true;
 	}
 	pressedKeyCodes() {
 		if(process.platform === 'win32') {
 			throw new TypeError('win32 impl does not track the keys');
 		}
-		this.impl.off('keydown', this.onKeyDown);
-		this.impl.off('keyup', this.onKeyUp);
+		this.impl.off('keydown', this.fnKeyDown);
+		this.impl.off('keyup', this.fnKeyUp);
+		console.log('KeydownCB list');
+		this.impl.rawListeners('keydown').forEach((value) => {
+			console.log('KeydownCB' + value.toString())
+		});
+		if(this.keyCodePressed !== 0) {
+			if (-1 == this.keyCodes.indexOf(this.keyCodePressed)) {
+				this.keyCodes.push(this.keyCodePressed);
+			}
+		}
+		console.log('\r\nkey codes array' + this.keyCodes + ' and ' + this.keyCodePressed);
 		return this.keyCodes;
 	}
 	onKeyDown(evt) {
-		if (-1 == keyCodes.indexOf(evt.keycode)) {
-			keyCodes.push(evt.keycode);
+		this.keyCodePressed = 0;
+		if (-1 == this.keyCodes.indexOf(evt.keycode)) {
+			this.keyCodes.push(evt.keycode);
 		}
 	}
 	onKeyUp(evt) {
-		const idx = keyCodes.indexOf(evt.keycode);
+		this.keyCodePressed = evt.keycode;
+		const idx = this.keyCodes.indexOf(evt.keycode);
 		if (-1 != idx) {
-			keyCodes.splice(idx, 1);
+			this.keyCodes.splice(idx, 1);
 		}
 	}
 }
