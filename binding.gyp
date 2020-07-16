@@ -4,11 +4,9 @@
         "cflags!": [ "-fno-exceptions" ],
         "cflags_cc!": [ "-fno-exceptions" ],
         "sources": [
-            	"src/main.cpp"
         ],
       	"conditions":[
       		["OS=='mac'", {
-      	  		"sources": [ "src/HotkeysMac.cpp" ],
                     "cflags+": ["-fvisibility=hidden"],
                     "xcode_settings": {
                       "GCC_SYMBOLS_PRIVATE_EXTERN": "YES"
@@ -16,8 +14,9 @@
       		}],
         	["OS=='win'", {
       	  		"sources": [
-	             		"src/Hotkeys.cpp",
-				"src/HotkeyManager.cpp",
+            	"src/main.cpp",
+	            "src/Hotkeys.cpp",
+				"src/HotkeyManager.cpp"
  			]                     
       		}]
       	], 
