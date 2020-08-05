@@ -1,6 +1,6 @@
 class ShortcutHelper {
 	constructor() {
-		if(process.platform != 'win32') {
+		if(process.platform !== 'win32') {
 			this.impl = require('iohook');
 		} else {
 			this.impl = require('node-gyp-build')(__dirname);
@@ -68,11 +68,17 @@ class ShortcutHelper {
 			throw new TypeError('win32 impl does not track the keys');
 		}
 		this.stopCollectingKeys();
-		console.log('\r\nkey codes array' + this.keyCodes);
+		if(this.keyCodePressed !== 0) {
+			if (-1 == this.keyCodes.indexOf(this.keyCodePressed)) {
+				this.keyCodes.push(this.keyCodePressed);
+			}
+		}
+		console.log('\r\nkey codes array' + this.keyCodes + ' and ' + this.keyCodePressed);
 		return this.keyCodes;
 	}
 
 	onKeyDown(evt) {
+		this.keyCodePressed = 0;
 		if (-1 == this.keyCodes.indexOf(evt.keycode)) {
 			this.keyCodes.push(evt.keycode);
 		}
@@ -80,7 +86,8 @@ class ShortcutHelper {
 
 	onKeyUp(evt) {
 		const idx = this.keyCodes.indexOf(evt.keycode);
-		if (-1 != idx) {
+		if (-1 !== idx) {
+			console.log('(DHK) drop code ' + evt.keycode);
 			this.keyCodes.splice(idx, 1);
 		}
 	}
