@@ -30,7 +30,8 @@
     "node-gyp": "^6.1.0"
   },
   "np": {
-    "yarn": false
+    "yarn": false,
+    "anyBranch": true
   },
   "iohook": {
     "targets": [
