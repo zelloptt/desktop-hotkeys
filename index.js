@@ -69,7 +69,7 @@ class ShortcutHelper {
 		}
 		this.stopCollectingKeys();
 		if(this.keyCodePressed !== 0) {
-			if (-1 == this.keyCodes.indexOf(this.keyCodePressed)) {
+			if (-1 === this.keyCodes.indexOf(this.keyCodePressed)) {
 				this.keyCodes.push(this.keyCodePressed);
 			}
 		}
@@ -79,7 +79,8 @@ class ShortcutHelper {
 
 	onKeyDown(evt) {
 		this.keyCodePressed = 0;
-		if (-1 == this.keyCodes.indexOf(evt.keycode)) {
+		if (-1 === this.keyCodes.indexOf(evt.keycode)) {
+			console.log('(DHK) add code ' + evt.keycode);
 			this.keyCodes.push(evt.keycode);
 		}
 	}
