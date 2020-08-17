@@ -140,14 +140,31 @@ Napi::Number HotKeys::unregisterShortcut(const Napi::CallbackInfo& info)
 	return Napi::Number::New(env, uRetValue);
 }
 
-Napi::Number HotKeys::unregisterAllShortcuts(const Napi::CallbackInfo& info)
+Napi::Number HotKeys::unregisterShortcut(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
+	if (info.Length() < 1 || !info[0].IsNumber()) {
+		Napi::TypeError::New(env, "Invalid argument: Hotkey id expected").ThrowAsJavaScriptException();
+	}
 	unsigned uRetValue = static_cast<unsigned>(-1);
 	if (g_pHotKeyManager && g_pHotKeyManager->Valid()) {
-		uRetValue = g_pHotKeyManager->unregisterAllShortcuts();
+		uRetValue = g_pHotKeyManager->unregisterShortcut(info[0].As<Napi::Number>().Uint32Value());
 	}
 	return Napi::Number::New(env, uRetValue);
+}
+
+Napi::Number HotKeys::macShowAccessibilitySettings(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+	Napi::TypeError::New(env, "accessibility settings do not exist on win").ThrowAsJavaScriptException();
+	return Napi::Number::New(env, -1);
+}
+
+Napi::Boolean HotKeys::macCheckAccessibilityGranted(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+	Napi::TypeError::New(env, "accessibility check should not be called on win").ThrowAsJavaScriptException();
+	return Napi::Boolean::New(env, true);
 }
 
 Napi::Object InitAll(Napi::Env env, Napi::Object exports)
@@ -157,5 +174,7 @@ Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 	exports.Set("registerShortcut", Napi::Function::New(env, HotKeys::registerShortcut));
 	exports.Set("unregisterShortcut", Napi::Function::New(env, HotKeys::unregisterShortcut));
 	exports.Set("unregisterAllShortcuts", Napi::Function::New(env, HotKeys::unregisterAllShortcuts));
+	exports.Set("macCheckAccessibilityGranted", Napi::Function::New(env, HotKeys::macCheckAccessibilityGranted));
+	exports.Set("macShowAccessibilitySettings", Napi::Function::New(env, HotKeys::macShowAccessibilitySettings));
 	return exports;
 }

@@ -7,10 +7,14 @@
         ],
       	"conditions":[
       		["OS=='mac'", {
-                    "cflags+": ["-fvisibility=hidden"],
-                    "xcode_settings": {
-                      "GCC_SYMBOLS_PRIVATE_EXTERN": "YES"
-                    }
+      		    "sources": [
+      		        "src/HotkeysMac.mm",
+      		        "src/main.cpp"
+      		    ],
+                "cflags+": ["-fvisibility=hidden"],
+                "xcode_settings": {
+                "GCC_SYMBOLS_PRIVATE_EXTERN": "YES"
+                }
       		}],
         	["OS=='win'", {
       	  		"sources": [

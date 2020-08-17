@@ -2,6 +2,7 @@ class ShortcutHelper {
 	constructor() {
 		if(process.platform !== 'win32') {
 			this.impl = require('iohook');
+			this.macImpl = require('node-gyp-build')(__dirname);
 		} else {
 			this.impl = require('node-gyp-build')(__dirname);
 		}
@@ -9,6 +10,7 @@ class ShortcutHelper {
 		this.fnKeyDown = this.onKeyDown.bind(this);
 		this.fnKeyUp = this.onKeyUp.bind(this);
 		this.collectingKeys = false;
+		console.log('(DHK) starting local module 1.1.1');
 	}
 
 	start(enableLogger) {
@@ -17,6 +19,12 @@ class ShortcutHelper {
 
 	stop() {
 		return this.impl.stop();
+	}
+
+	reload() {
+		this.impl.unregisterAllShortcuts();
+		this.impl.stop();
+		this.impl.start(false);
 	}
 
 	registerShortcut(keys, callback, releaseCallback, keysAreVKC) {
@@ -40,7 +48,20 @@ class ShortcutHelper {
 		this.collectingKeys = true;
 		this.impl.on('keydown', this.fnKeyDown);
 		this.impl.on('keyup', this.fnKeyUp);
+		this.logListeners();
 		return true;
+	}
+
+	logListeners() {
+		const listeners = this.impl.rawListeners('keydown');
+		if (listeners.length > 0) {
+			console.log('(DHK) KeydownCB list:');
+			listeners.forEach((value) => {
+				console.log('\tKeydownCB ' + value.toString());
+			});
+		} else {
+			console.log('(DHK) KeydownCB list is empty');
+		}
 	}
 
 	stopCollectingKeys() {
@@ -49,6 +70,7 @@ class ShortcutHelper {
 			this.collectingKeys = false;
 			this.impl.off('keydown', this.fnKeyDown);
 			this.impl.off('keyup', this.fnKeyUp);
+			this.logListeners();
 		}
 	}
 
@@ -56,7 +78,7 @@ class ShortcutHelper {
 		if(process.platform === 'win32') {
 			throw new TypeError('win32 impl does not track the keys');
 		}
-		this.stopCollectingKeys();
+		// this.stopCollectingKeys();
 		console.log('\r\n(DHK) Fetching the key codes array [' + this.keyCodes + ']');
 		return this.keyCodes;
 	}
@@ -76,8 +98,31 @@ class ShortcutHelper {
 			this.keyCodes.splice(idx, 1);
 		}
 	}
+
+	setupAccessibilityCallback(enable, cb) {
+		if(process.platform === 'darwin') {
+			if (enable) {
+				return this.macImpl.macSubscribeAccessibilityUpdates(cb);
+			} else {
+				return this.macImpl.macUnsubscribeAccessibilityUpdates();
+			}
+		}
+	}
+
+	showAccessibilitySettings() {
+		if(process.platform === 'darwin') {
+			this.macImpl.macShowAccessibilitySettings();
+		}
+	}
+
+	checkAccessibility() {
+		if(process.platform === 'darwin') {
+			return this.macImpl.macCheckAccessibilityGranted();
+		}
+		return true;
+	}
 }
 
-const shortcutHelper = new ShortcutHelper();
+var shortcutHelper = new ShortcutHelper();
 module.exports = shortcutHelper;
 
