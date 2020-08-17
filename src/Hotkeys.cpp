@@ -140,31 +140,42 @@ Napi::Number HotKeys::unregisterShortcut(const Napi::CallbackInfo& info)
 	return Napi::Number::New(env, uRetValue);
 }
 
-Napi::Number HotKeys::unregisterShortcut(const Napi::CallbackInfo& info)
+Napi::Number HotKeys::unregisterAllShortcuts(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
-	if (info.Length() < 1 || !info[0].IsNumber()) {
-		Napi::TypeError::New(env, "Invalid argument: Hotkey id expected").ThrowAsJavaScriptException();
-	}
 	unsigned uRetValue = static_cast<unsigned>(-1);
 	if (g_pHotKeyManager && g_pHotKeyManager->Valid()) {
-		uRetValue = g_pHotKeyManager->unregisterShortcut(info[0].As<Napi::Number>().Uint32Value());
+		uRetValue = g_pHotKeyManager->unregisterAllShortcuts();
 	}
 	return Napi::Number::New(env, uRetValue);
 }
 
-Napi::Number HotKeys::macShowAccessibilitySettings(const Napi::CallbackInfo& info)
+template<typename T, typename TPrim>
+T macAccessibilityUnavailable(const Napi::CallbackInfo& info, TPrim defValue)
 {
 	Napi::Env env = info.Env();
 	Napi::TypeError::New(env, "accessibility settings do not exist on win").ThrowAsJavaScriptException();
-	return Napi::Number::New(env, -1);
+	return T::New(env, defValue);
+}
+
+Napi::Number HotKeys::macShowAccessibilitySettings(const Napi::CallbackInfo& info)
+{
+    return macAccessibilityUnavailable<Napi::Number, double>(info, -1);
+}
+
+Napi::Number HotKeys::macSubscribeAccessibilityUpdates(const Napi::CallbackInfo& info)
+{
+    return macAccessibilityUnavailable<Napi::Number, double>(info, -1);
+}
+
+Napi::Number HotKeys::macUnsubscribeAccessibilityUpdates(const Napi::CallbackInfo& info)
+{
+    return macAccessibilityUnavailable<Napi::Number, double>(info, -1);
 }
 
 Napi::Boolean HotKeys::macCheckAccessibilityGranted(const Napi::CallbackInfo& info)
 {
-	Napi::Env env = info.Env();
-	Napi::TypeError::New(env, "accessibility check should not be called on win").ThrowAsJavaScriptException();
-	return Napi::Boolean::New(env, true);
+    return macAccessibilityUnavailable<Napi::Boolean, bool>(info, true);
 }
 
 Napi::Object InitAll(Napi::Env env, Napi::Object exports)
@@ -176,5 +187,7 @@ Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 	exports.Set("unregisterAllShortcuts", Napi::Function::New(env, HotKeys::unregisterAllShortcuts));
 	exports.Set("macCheckAccessibilityGranted", Napi::Function::New(env, HotKeys::macCheckAccessibilityGranted));
 	exports.Set("macShowAccessibilitySettings", Napi::Function::New(env, HotKeys::macShowAccessibilitySettings));
+	exports.Set("macSubscribeAccessibilityUpdates", Napi::Function::New(env, HotKeys::macSubscribeAccessibilityUpdates));
+    exports.Set("macUnsubscribeAccessibilityUpdates", Napi::Function::New(env, HotKeys::macUnsubscribeAccessibilityUpdates));
 	return exports;
 }
