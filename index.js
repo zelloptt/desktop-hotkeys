@@ -28,38 +28,27 @@ class ShortcutHelper {
 	}
 
 	collectPressedKeyCodes() {
+		console.log('\r\n(DHK) looking for pressed keys');
 		if(process.platform === 'win32') {
 			throw new TypeError('win32 impl does not track the keys');
 		}
 		this.keyCodes = [];
 		if (this.collectingKeys === true) {
+			console.log('\r\n(DHK) do not start twice!');
 			return true;
 		}
 		this.collectingKeys = true;
 		this.impl.on('keydown', this.fnKeyDown);
 		this.impl.on('keyup', this.fnKeyUp);
-		this.logListeners();
 		return true;
-	}
-
-	logListeners() {
-		const listeners = this.impl.rawListeners('keydown');
-		if (listeners.length > 0) {
-			console.log('(DHK) KeydownCB list:');
-			listeners.forEach((value) => {
-				console.log('\tKeydownCB ' + value.toString());
-			});
-		} else {
-			console.log('(DHK) KeydownCB list is empty');
-		}
 	}
 
 	stopCollectingKeys() {
 		if (this.collectingKeys === true) {
+			console.log('\r\n(DHK) Stop looking for pressed keys');
 			this.collectingKeys = false;
 			this.impl.off('keydown', this.fnKeyDown);
 			this.impl.off('keyup', this.fnKeyUp);
-			this.logListeners();
 		}
 	}
 
@@ -68,19 +57,14 @@ class ShortcutHelper {
 			throw new TypeError('win32 impl does not track the keys');
 		}
 		this.stopCollectingKeys();
-		if(this.keyCodePressed !== 0) {
-			if (-1 === this.keyCodes.indexOf(this.keyCodePressed)) {
-				this.keyCodes.push(this.keyCodePressed);
-			}
-		}
-		console.log('\r\nkey codes array' + this.keyCodes + ' and ' + this.keyCodePressed);
+		console.log('\r\n(DHK) Fetching the key codes array [' + this.keyCodes + ']');
 		return this.keyCodes;
 	}
 
 	onKeyDown(evt) {
-		this.keyCodePressed = 0;
+		console.log('\r\n(DHK) key down: ' + evt.keycode);
 		if (-1 === this.keyCodes.indexOf(evt.keycode)) {
-			console.log('(DHK) add code ' + evt.keycode);
+			console.log('\r\n(DHK) add code ' + evt.keycode);
 			this.keyCodes.push(evt.keycode);
 		}
 	}
