@@ -38,6 +38,7 @@
       "electron-75"
     ],
     "platforms": [
+      "win",
       "darwin",
       "linux"
     ],
