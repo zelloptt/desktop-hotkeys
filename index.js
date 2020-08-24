@@ -10,7 +10,6 @@ class ShortcutHelper {
 		this.fnKeyDown = this.onKeyDown.bind(this);
 		this.fnKeyUp = this.onKeyUp.bind(this);
 		this.collectingKeys = false;
-		console.log('(DHK) starting local module 1.1.1');
 	}
 
 	start(enableLogger) {
@@ -48,20 +47,7 @@ class ShortcutHelper {
 		this.collectingKeys = true;
 		this.impl.on('keydown', this.fnKeyDown);
 		this.impl.on('keyup', this.fnKeyUp);
-		this.logListeners();
 		return true;
-	}
-
-	logListeners() {
-		const listeners = this.impl.rawListeners('keydown');
-		if (listeners.length > 0) {
-			console.log('(DHK) KeydownCB list:');
-			listeners.forEach((value) => {
-				console.log('\tKeydownCB ' + value.toString());
-			});
-		} else {
-			console.log('(DHK) KeydownCB list is empty');
-		}
 	}
 
 	stopCollectingKeys() {
@@ -70,7 +56,6 @@ class ShortcutHelper {
 			this.collectingKeys = false;
 			this.impl.off('keydown', this.fnKeyDown);
 			this.impl.off('keyup', this.fnKeyUp);
-			this.logListeners();
 		}
 	}
 
@@ -84,9 +69,7 @@ class ShortcutHelper {
 	}
 
 	onKeyDown(evt) {
-		console.log('\r\n(DHK) key down: ' + evt.keycode);
 		if (-1 === this.keyCodes.indexOf(evt.keycode)) {
-			console.log('\r\n(DHK) add code ' + evt.keycode);
 			this.keyCodes.push(evt.keycode);
 		}
 	}
@@ -94,7 +77,6 @@ class ShortcutHelper {
 	onKeyUp(evt) {
 		const idx = this.keyCodes.indexOf(evt.keycode);
 		if (-1 !== idx) {
-			console.log('(DHK) drop code ' + evt.keycode);
 			this.keyCodes.splice(idx, 1);
 		}
 	}
