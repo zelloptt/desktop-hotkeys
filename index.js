@@ -10,6 +10,7 @@ class ShortcutHelper {
 		this.fnKeyDown = this.onKeyDown.bind(this);
 		this.fnKeyUp = this.onKeyUp.bind(this);
 		this.collectingKeys = false;
+		this.lastPressedKeyCode = 0;
 	}
 
 	start(enableLogger) {
@@ -40,6 +41,7 @@ class ShortcutHelper {
 			throw new TypeError('win32 impl does not track the keys');
 		}
 		this.keyCodes = [];
+		this.lastPressedKeyCode = 0;
 		if (this.collectingKeys === true) {
 			console.log('\r\n(DHK) do not start twice!');
 			return true;
@@ -64,13 +66,21 @@ class ShortcutHelper {
 			throw new TypeError('win32 impl does not track the keys');
 		}
 		// this.stopCollectingKeys();
-		console.log('\r\n(DHK) Fetching the key codes array [' + this.keyCodes + ']');
-		return this.keyCodes;
+		console.log('\r\n(DHK) Fetching the key codes [' + this.keyCodes + ']');
+		const keyCodesCopy = this.keyCodes.slice();
+		const idx = this.keyCodes.indexOf(this.lastPressedKeyCode);
+		if (-1 !== idx) {
+			this.lastPressedKeyCode = 0;
+			this.keyCodes.splice(idx, 1);
+			console.log('\r\n(DHK) shortened key codes [' + this.keyCodes + ']');
+		}
+		return keyCodesCopy;
 	}
 
 	onKeyDown(evt) {
 		if (-1 === this.keyCodes.indexOf(evt.keycode)) {
 			this.keyCodes.push(evt.keycode);
+			this.lastPressedKeyCode = evt.keycode;
 		}
 	}
 
@@ -78,6 +88,9 @@ class ShortcutHelper {
 		const idx = this.keyCodes.indexOf(evt.keycode);
 		if (-1 !== idx) {
 			this.keyCodes.splice(idx, 1);
+			if (this.lastPressedKeyCode === evt.keycode) {
+				this.lastPressedKeyCode = 0;
+			}
 		}
 	}
 
