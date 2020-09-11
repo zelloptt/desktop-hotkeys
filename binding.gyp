@@ -26,7 +26,7 @@
         	["OS=='linux'", {
       	  		"sources": [
             	"src/main.cpp",
-	            "src/HotkeysLinuxEmptyImpl.cpp",
+	            "src/HotkeysLinuxEmptyImpl.cpp"
  			]
       		}]
       	],
