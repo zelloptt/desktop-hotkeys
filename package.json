@@ -27,7 +27,6 @@
   },
   "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
   "devDependencies": {
-    "node-gyp": "7.1.0",
     "np": "^6.5.0"
   },
   "np": {
@@ -50,6 +49,7 @@
   "dependencies": {
     "iohook": "0.6.6",
     "node-addon-api": "2.0.2",
+    "node-gyp": "7.1.0",
     "node-gyp-build": "4.2.3"
   }
 }
