@@ -22,8 +22,14 @@
 	            "src/Hotkeys.cpp",
 				"src/HotkeyManager.cpp"
  			]                     
+      		}],
+        	["OS=='linux'", {
+      	  		"sources": [
+            	"src/main.cpp",
+	            "src/HotkeysLinuxEmptyImpl.cpp",
+ 			]
       		}]
-      	], 
+      	],
         'include_dirs': [
             "<!@(node -p \"require('node-addon-api').include\")"
         ],

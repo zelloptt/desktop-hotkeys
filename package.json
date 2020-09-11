@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
   "devDependencies": {
-    "node-gyp": "^6.1.0"
+    "node-gyp": "7.1.0"
   },
   "np": {
     "yarn": false,
@@ -35,7 +35,7 @@
   },
   "iohook": {
     "targets": [
-      "electron-75"
+      "electron-80"
     ],
     "platforms": [
       "darwin",
@@ -47,8 +47,8 @@
     ]
   },
   "dependencies": {
-    "iohook": "^0.6.6",
-    "node-addon-api": "2.0.2",
-    "node-gyp-build": "^4.2.3"
+    "iohook": "0.6.6",
+    "node-addon-api": "3.0.1",
+    "node-gyp-build": "4.2.3"
   }
 }

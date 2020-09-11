@@ -1,8 +1,10 @@
 class ShortcutHelper {
 	constructor() {
-		if(process.platform !== 'win32') {
+		if (process.platform !== 'win32') {
 			this.impl = require('iohook');
-			this.macImpl = require('node-gyp-build')(__dirname);
+			if (process.platform === 'darwin') {
+				this.macImpl = require('node-gyp-build')(__dirname);
+			}
 		} else {
 			this.impl = require('node-gyp-build')(__dirname);
 		}
@@ -37,7 +39,7 @@ class ShortcutHelper {
 
 	collectPressedKeyCodes() {
 		console.log('\r\n(DHK) looking for pressed keys');
-		if(process.platform === 'win32') {
+		if (process.platform === 'win32') {
 			throw new TypeError('win32 impl does not track the keys');
 		}
 		this.keyCodes = [];
@@ -62,7 +64,7 @@ class ShortcutHelper {
 	}
 
 	pressedKeyCodes() {
-		if(process.platform === 'win32') {
+		if (process.platform === 'win32') {
 			throw new TypeError('win32 impl does not track the keys');
 		}
 		// this.stopCollectingKeys();
@@ -95,7 +97,7 @@ class ShortcutHelper {
 	}
 
 	setupAccessibilityCallback(enable, cb) {
-		if(process.platform === 'darwin') {
+		if (process.platform === 'darwin') {
 			if (enable) {
 				return this.macImpl.macSubscribeAccessibilityUpdates(cb);
 			} else {
@@ -105,13 +107,13 @@ class ShortcutHelper {
 	}
 
 	showAccessibilitySettings() {
-		if(process.platform === 'darwin') {
+		if (process.platform === 'darwin') {
 			this.macImpl.macShowAccessibilitySettings();
 		}
 	}
 
 	checkAccessibility() {
-		if(process.platform === 'darwin') {
+		if (process.platform === 'darwin') {
 			return this.macImpl.macCheckAccessibilityGranted();
 		}
 		return true;
