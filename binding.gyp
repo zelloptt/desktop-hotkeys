@@ -11,6 +11,15 @@
       		        "src/HotkeysMac.mm",
       		        "src/main.cpp"
       		    ],
+      		    'include_dirs': [
+                    "uiohook/include"
+                ],
+      		    'libraries': [
+                    "Release/uiohook.a"
+                ],
+                'dependencies': [
+                    "./uiohook.gyp:uiohook"
+                ],
                 "cflags+": ["-fvisibility=hidden"],
                 "xcode_settings": {
                 "GCC_SYMBOLS_PRIVATE_EXTERN": "YES"
@@ -31,15 +40,10 @@
       		}]
       	],
         'include_dirs': [
-            "<!@(node -p \"require('node-addon-api').include\")",
-            "uiohook/include"
-        ],
-        'libraries': [
-            "Release/uiohook.a"
+            "<!@(node -p \"require('node-addon-api').include\")"
         ],
         'dependencies': [
-            "<!(node -p \"require('node-addon-api').gyp\")",
-            "./uiohook.gyp:uiohook"
+            "<!(node -p \"require('node-addon-api').gyp\")"
         ],
         'defines': [ 'NAPI_DISABLE_CPP_EXCEPTIONS' ]
     }]
