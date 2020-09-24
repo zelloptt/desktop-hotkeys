@@ -7,6 +7,8 @@ namespace HotKeys
 	Napi::Number registerShortcut(const Napi::CallbackInfo& info);
 	Napi::Number unregisterShortcut(const Napi::CallbackInfo& info);
 	Napi::Number unregisterAllShortcuts(const Napi::CallbackInfo& info);
+	Napi::Boolean collectPressedKeyCodes(const Napi::CallbackInfo& info);
+	Napi::Array pressedKeyCodes(const Napi::CallbackInfo& info);
 	Napi::Boolean macCheckAccessibilityGranted(const Napi::CallbackInfo& info);
 	Napi::Number macShowAccessibilitySettings(const Napi::CallbackInfo& info);
 	Napi::Number macSubscribeAccessibilityUpdates(const Napi::CallbackInfo& info);
