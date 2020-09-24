@@ -1,3 +1,4 @@
 [submodule "uiohook"]
 	path = uiohook
 	url = https://github.com/kwhat/libuiohook
+	branch = 1.2
