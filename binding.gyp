@@ -12,7 +12,7 @@
       		        "src/main.cpp"
       		    ],
       		    'include_dirs': [
-                    "libuiohook/include"
+                    "uiohook/include"
                 ],
       		    'libraries': [
                     "Release/uiohook.a"

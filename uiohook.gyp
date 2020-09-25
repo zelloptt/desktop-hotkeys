@@ -3,20 +3,20 @@
 		"target_name": "uiohook",
 		"type": "static_library",
 		"sources": [
-			"libuiohook/include/uiohook.h",
-			"libuiohook/src/logger.c",
-			"libuiohook/src/logger.h",
-			"libuiohook/src/darwin/input_helper.h",
-			"libuiohook/src/darwin/input_helper.c",
-			"libuiohook/src/darwin/input_hook.c",
-			"libuiohook/src/darwin/post_event.c",
-			"libuiohook/src/darwin/system_properties.c"
+			"uiohook/include/uiohook.h",
+			"uiohook/src/logger.c",
+			"uiohook/src/logger.h",
+			"uiohook/src/darwin/input_helper.h",
+			"uiohook/src/darwin/input_helper.c",
+			"uiohook/src/darwin/input_hook.c",
+			"uiohook/src/darwin/post_event.c",
+			"uiohook/src/darwin/system_properties.c"
 		],
 		"include_dirs": [
 			'node_modules/nan',
-			'libuiohook/include',
-			'libuiohook/src',
-			'libuiohook/src/darwin'
+			'uiohook/include',
+			'uiohook/src',
+			'uiohook/src/darwin'
 		],
         "defines": [
             'USE_OBJC',
