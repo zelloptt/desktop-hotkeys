@@ -1,4 +1,4 @@
-[submodule "uiohook"]
-	path = uiohook
-	url = https://github.com/kwhat/libuiohook
+[submodule "libuiohook"]
+	path = libuiohook
+	url = https://github.com/zelloptt/libuiohook
 	branch = 1.2

@@ -8,15 +8,21 @@
 #include <wchar.h>
 #include <map>
 #include <set>
+#include <thread>
+#include <chrono>
 
 // Native thread errors.
 #define UIOHOOK_ERROR_THREAD_CREATE 0x10
 
-Napi::ThreadSafeFunction g_fnAccChanged; // invoked for every accessibility on/off
-
-bool subscribedForAccNotifications = false;
-bool hookInstalled = false;
+static bool hookInstalled = false;
+static bool verboseMode = false;
 static unsigned nextHotkeyId = 1;
+
+static pthread_t hook_thread;
+
+static pthread_mutex_t hook_running_mutex;
+static pthread_mutex_t hook_control_mutex;
+static pthread_cond_t hook_control_cond;
 
 class HotKey
 {
@@ -33,6 +39,7 @@ public:
             _keyPressedState[keyCodes[idx]] = false;
         }
     }
+
     void onKeyEvent(unsigned keyCode, bool pressed)
     {
         std::map<unsigned, bool>::iterator cit = _keyPressedState.find(keyCode);
@@ -62,16 +69,19 @@ public:
 	    _hotkeys[id] = std::unique_ptr<HotKey>(new HotKey(pressed, released, keyCodes, keyCount));
 	    return id;
 	}
+
 	unsigned remove(unsigned id)
 	{
 	    _hotkeys.erase(id);
 	    return 0;
 	}
+
 	unsigned removeAll()
 	{
 	    _hotkeys.clear();
 	    return 0;
 	}
+
 	void onKeyEvent(unsigned keyCode, bool pressed)
 	{
 	    for (TCONT::const_iterator cit = _hotkeys.begin(); cit != _hotkeys.end(); ++cit) {
@@ -88,6 +98,7 @@ class PressedKeysCollection
 public:
     PressedKeysCollection() : _lastActiveKey(0), _active(false)
     {}
+
     void onKeyEvent(unsigned key, bool pressed)
     {
         if (pressed) {
@@ -100,16 +111,19 @@ public:
             }
         }
     }
+
     void reset()
     {
         _keys.clear();
         _lastActiveKey = 0;
     }
+
     void get(std::back_insert_iterator<std::vector<unsigned>> it)
     {
         std::copy(_keys.begin(), _keys.end(), it);
         _keys.erase(_lastActiveKey);
     }
+
     bool setActive(bool active)
     {
         if (active) {
@@ -122,12 +136,6 @@ public:
         return false;
     }
 } keyCollection;
-
-static pthread_t hook_thread;
-
-static pthread_mutex_t hook_running_mutex;
-static pthread_mutex_t hook_control_mutex;
-static pthread_cond_t hook_control_cond;
 
 class Initter
 {
@@ -147,26 +155,13 @@ public:
 } obj;
 
 bool logger_proc(unsigned int level, const char *format, ...) {
-    bool status = false;
-
     va_list args;
-    switch (level) {
-        case LOG_LEVEL_INFO:
-        case LOG_LEVEL_DEBUG:
-        case LOG_LEVEL_WARN:
-            //va_start(args, format);
-            //status = vfprintf(stderr, format, args) >= 0;
-            //va_end(args);
-            break;
-
-        case LOG_LEVEL_ERROR:
-            va_start(args, format);
-            status = vfprintf(stderr, format, args) >= 0;
-            va_end(args);
-            break;
+    if (verboseMode || (LOG_LEVEL_ERROR == level)) {
+        va_start(args, format);
+        vfprintf(stderr, format, args);
+        va_end(args);
     }
-
-    return status;
+    return true;
 }
 
 // NOTE: The following callback executes on the same thread that hook_run() is called
@@ -176,22 +171,18 @@ bool logger_proc(unsigned int level, const char *format, ...) {
 // takes to long to process.  If you need to do any extended processing, please
 // do so by copying the event to your own queued dispatch thread.
 void dispatch_proc(uiohook_event * const event) {
-    char buffer[256] = { 0 };
-    size_t length = snprintf(buffer, sizeof(buffer),
-            "id=%i,mask=0x%X",
-            event->type, event->mask);
 
     switch (event->type) {
         case EVENT_HOOK_ENABLED:
-            logger_proc(LOG_LEVEL_ERROR, "***Lock the running mutex so we know if the hook is enabled");
+            logger_proc(LOG_LEVEL_DEBUG, "***Lock the running mutex so we know if the hook is enabled");
             // Lock the running mutex so we know if the hook is enabled.
             #ifdef _WIN32
             EnterCriticalSection(&hook_running_mutex);
             #else
             pthread_mutex_lock(&hook_running_mutex);
             #endif
-            logger_proc(LOG_LEVEL_ERROR, "***Lock the running mutex so we know if the hook is enabled - OK");
-            logger_proc(LOG_LEVEL_ERROR, "***Unlock the control mutex so hook_enable() can continue");
+            logger_proc(LOG_LEVEL_DEBUG, "(DHK): ***Lock the running mutex so we know if the hook is enabled - OK");
+            logger_proc(LOG_LEVEL_DEBUG, "(DHK): ***Unlock the control mutex so hook_enable() can continue");
 
             // Unlock the control mutex so hook_enable() can continue.
             #ifdef _WIN32
@@ -199,9 +190,9 @@ void dispatch_proc(uiohook_event * const event) {
             LeaveCriticalSection(&hook_control_mutex);
             #else
             pthread_cond_signal(&hook_control_cond);
-            logger_proc(LOG_LEVEL_ERROR, "***Unlock the control mutex so hook_enable() can continue -- OK1");
+            logger_proc(LOG_LEVEL_ERROR, "(DHK): ***Unlock the control mutex so hook_enable() can continue -- OK1");
             pthread_mutex_unlock(&hook_control_mutex);
-            logger_proc(LOG_LEVEL_ERROR, "***Unlock the control mutex so hook_enable() can continue -- OK2");
+            logger_proc(LOG_LEVEL_ERROR, "(DHK): ***Unlock the control mutex so hook_enable() can continue -- OK2");
             #endif
             break;
 
@@ -219,8 +210,8 @@ void dispatch_proc(uiohook_event * const event) {
             #else
             #if defined(__APPLE__) && defined(__MACH__)
             // Stop the main runloop so that this program ends.
-            logger_proc(LOG_LEVEL_ERROR, "*** Stop the main runloop so that this program ends.\r\n");
-            CFRunLoopStop(CFRunLoopGetMain());
+            // logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** Stop the main runloop so that this program ends.\r\n");
+            // CFRunLoopStop(CFRunLoopGetMain());
             #endif
 
             pthread_mutex_unlock(&hook_running_mutex);
@@ -231,16 +222,20 @@ void dispatch_proc(uiohook_event * const event) {
         case EVENT_KEY_RELEASED:
             hotKeyStore.onKeyEvent(event->data.keyboard.keycode, event->type == EVENT_KEY_PRESSED);
             keyCollection.onKeyEvent(event->data.keyboard.keycode, event->type == EVENT_KEY_PRESSED);
-            snprintf(buffer + length, sizeof(buffer) - length,
-                ",keycode=%u,char=(%u)rawcode=0x%X",
-                event->data.keyboard.keycode, event->data.keyboard.keychar,event->data.keyboard.rawcode);
+            if (verboseMode) {
+                fprintf(stderr, "(DHK): id=%i,mask=0x%X,keycode=%u,char=(%u)rawcode=0x%X",
+                    event->type, event->mask,
+                    event->data.keyboard.keycode, event->data.keyboard.keychar, event->data.keyboard.rawcode);
+            }
             break;
 
         case EVENT_KEY_TYPED:
-            snprintf(buffer + length, sizeof(buffer) - length,
-                ",keychar=%lc,rawcode=%u",
-                (wint_t) event->data.keyboard.keychar,
-                event->data.keyboard.rawcode);
+            if (verboseMode) {
+                fprintf(stderr, "(DHK): id=%i,mask=0x%X,keychar=%lc,rawcode=%u",
+                    event->type, event->mask,
+                    (wint_t) event->data.keyboard.keychar,
+                    event->data.keyboard.rawcode);
+                }
             break;
 
         case EVENT_MOUSE_PRESSED:
@@ -252,7 +247,6 @@ void dispatch_proc(uiohook_event * const event) {
         default:
             return;
     }
-
     //fprintf(stderr, "%s\n", buffer);
 }
 
@@ -292,14 +286,15 @@ int hook_enable() {
     // Lock the thread control mutex.  This will be unlocked when the
     // thread has finished starting, or when it has fully stopped.
 
-                logger_proc(LOG_LEVEL_ERROR, "*** will call hook_control_mutex\r\n");
+    logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** will call hook_control_mutex\r\n");
 
     #ifdef _WIN32
     EnterCriticalSection(&hook_control_mutex);
     #else
     pthread_mutex_lock(&hook_control_mutex);
     #endif
-                logger_proc(LOG_LEVEL_ERROR, "*** hook_control_mutex OK\r\n");
+
+    logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** hook_control_mutex OK\r\n");
 
     // Set the initial status.
     int status = UIOHOOK_FAILURE;
@@ -327,7 +322,7 @@ int hook_enable() {
         #if defined(_WIN32)
         // Attempt to set the thread priority to time critical.
         if (SetThreadPriority(hook_thread, THREAD_PRIORITY_TIME_CRITICAL) == 0) {
-            logger_proc(LOG_LEVEL_WARN, "%s [%u]: Could not set thread priority %li for thread %#p! (%#lX)\n",
+            logger_proc(LOG_LEVEL_WARN, "(DHK): %s [%u]: Could not set thread priority %li for thread %#p! (%#lX)\n",
                     __FUNCTION__, __LINE__, (long) THREAD_PRIORITY_TIME_CRITICAL,
                     hook_thread    , (unsigned long) GetLastError());
         }
@@ -336,18 +331,18 @@ int hook_enable() {
         // use pthread_setschedparam instead.
         struct sched_param param = { .sched_priority = priority };
         if (pthread_setschedparam(hook_thread, SCHED_OTHER, &param) != 0) {
-            logger_proc(LOG_LEVEL_WARN, "%s [%u]: Could not set thread priority %i for thread 0x%lX!\n",
+            logger_proc(LOG_LEVEL_WARN, "(DHK): %s [%u]: Could not set thread priority %i for thread 0x%lX!\n",
                     __FUNCTION__, __LINE__, priority, (unsigned long) hook_thread);
         }
         #else
         // Raise the thread priority using glibc pthread_setschedprio.
         if (pthread_setschedprio(hook_thread, priority) != 0) {
-            logger_proc(LOG_LEVEL_WARN, "%s [%u]: Could not set thread priority %i for thread 0x%lX!\n",
+            logger_proc(LOG_LEVEL_WARN, "(DHK): %s [%u]: Could not set thread priority %i for thread 0x%lX!\n",
                     __FUNCTION__, __LINE__, priority, (unsigned long) hook_thread);
         }
         #endif
 
-                logger_proc(LOG_LEVEL_ERROR, "*** will Wait for the thread to indicate that it has passed\r\n");
+        logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** will Wait for the thread to indicate that it has passed\r\n");
 
         // Wait for the thread to indicate that it has passed the
         // initialization portion by blocking until either a EVENT_HOOK_ENABLED
@@ -358,7 +353,7 @@ int hook_enable() {
         #else
         pthread_cond_wait(&hook_control_cond, &hook_control_mutex);
         #endif
-        logger_proc(LOG_LEVEL_ERROR, "*** Wait for the thread to indicate that it has passed -- OK\r\n");
+        logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** Wait for the thread to indicate that it has passed -- OK\r\n");
 
         #ifdef _WIN32
         if (TryEnterCriticalSection(&hook_running_mutex) != FALSE) {
@@ -377,7 +372,7 @@ int hook_enable() {
             status = *hook_thread_status;
 
             int unlocked = pthread_mutex_unlock(&hook_running_mutex);
-            logger_proc(LOG_LEVEL_DEBUG, "%s [%u]: unlock Result: %d\n",
+            logger_proc(LOG_LEVEL_DEBUG, "(DHK): %s [%u]: unlock Result: %d\n",
                 __FUNCTION__, __LINE__, unlocked);
 
             #endif
@@ -390,7 +385,7 @@ int hook_enable() {
 
         free(hook_thread_status);
 
-        logger_proc(LOG_LEVEL_DEBUG, "%s [%u]: Thread Result: (%#X).\n",
+        logger_proc(LOG_LEVEL_DEBUG, "(DHK): %s [%u]: Thread Result: (%#X).\n",
                 __FUNCTION__, __LINE__, status);
     }
     else {
@@ -407,116 +402,71 @@ int hook_enable() {
     return status;
 }
 
-static void onAccChanged(CFNotificationCenterRef center, void *observer, CFStringRef name_cf,
-					 const void *object, CFDictionaryRef userInfo)
+int installHookProc()
 {
-    fprintf(stderr, "\r\n\r\nAccessibility has changed, current %d\r\n\r\n", (AXIsProcessTrusted() ? 1 : 0));
-    g_fnAccChanged.NonBlockingCall();
-    return;
-}
-
-Napi::Number HotKeys::start(const Napi::CallbackInfo& info)
-{
-    logger_proc(LOG_LEVEL_INFO, "INFO // Set the logger callback for library output.\r\n");
-    logger_proc(LOG_LEVEL_ERROR, "ERROR // Set the logger callback for library output.\r\n");
-
-    hook_set_logger_proc(&logger_proc);
-   // Retrieves the keyboard auto repeat rate.
-    long int repeat_rate = hook_get_auto_repeat_rate();
-    if (repeat_rate >= 0) {
-        logger_proc(LOG_LEVEL_INFO, "Auto Repeat Rate:\t%ld\r\n", repeat_rate);
-    } else {
-        logger_proc(LOG_LEVEL_ERROR, "Failed to acquire keyboard auto repeat rate!\r\n");
-    }
-
-    // Retrieves the keyboard auto repeat delay.
-    long int repeat_delay = hook_get_auto_repeat_delay();
-    if (repeat_delay >= 0) {
-        logger_proc(LOG_LEVEL_INFO, "Auto Repeat Delay:\t%ld\n", repeat_delay);
-    } else {
-        logger_proc(LOG_LEVEL_ERROR, "Failed to acquire keyboard auto repeat delay!\n");
-    }
-
-    // Retrieves the mouse acceleration multiplier.
-    long int acceleration_multiplier = hook_get_pointer_acceleration_multiplier();
-    if (acceleration_multiplier >= 0) {
-        logger_proc(LOG_LEVEL_INFO, "Mouse Acceleration Multiplier:\t%ld\n", acceleration_multiplier);
-    } else {
-        logger_proc(LOG_LEVEL_ERROR, "Failed to acquire mouse acceleration multiplier!\n");
-    }
-
-    // Retrieves the mouse acceleration threshold.
-    long int acceleration_threshold = hook_get_pointer_acceleration_threshold();
-    if (acceleration_threshold >= 0) {
-        logger_proc(LOG_LEVEL_INFO, "Mouse Acceleration Threshold:\t%ld\n", acceleration_threshold);
-    } else {
-        logger_proc(LOG_LEVEL_ERROR, "Failed to acquire mouse acceleration threshold!\n");
-    }
-
-    // Retrieves the mouse sensitivity.
-    long int sensitivity = hook_get_pointer_sensitivity();
-    if (sensitivity >= 0) {
-        logger_proc(LOG_LEVEL_INFO, "Mouse Sensitivity:\t%ld\n", sensitivity);
-    } else {
-        logger_proc(LOG_LEVEL_ERROR, "Failed to acquire mouse sensitivity value!\n");
-    }
-
-    // Retrieves the double/triple click interval.
-    long int click_time = hook_get_multi_click_time();
-    if (click_time >= 0) {
-        logger_proc(LOG_LEVEL_INFO, "Multi-Click Time:\t%ld\n", click_time);
-    } else {
-        logger_proc(LOG_LEVEL_ERROR, "Failed to acquire mouse multi-click time!\n");
-    }
-
+    int status = UIOHOOK_SUCCESS;
     if (!hookInstalled) {
-
+        hook_set_logger_proc(&logger_proc);
         hook_set_dispatch_proc(&dispatch_proc);
-            // Start the hook and block.
-            // NOTE If EVENT_HOOK_ENABLED was delivered, the status will always succeed.
-            logger_proc(LOG_LEVEL_ERROR, "*** will call hook_enable\r\n");
-            int status = hook_enable();
+        // Start the hook and block.
+        // NOTE If EVENT_HOOK_ENABLED was delivered, the status will always succeed.
+        logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** will call hook_enable\r\n");
+        status = hook_enable();
             switch (status) {
                 case UIOHOOK_SUCCESS:
                     hookInstalled = true;
                     CFRunLoopRun();
+                    // ***
+                    // pthread_join(hook_thread, NULL);
                     break;
 
                 // System level errors.
                 case UIOHOOK_ERROR_OUT_OF_MEMORY:
-                    logger_proc(LOG_LEVEL_ERROR, "Failed to allocate memory. (%#X)\n", status);
+                    logger_proc(LOG_LEVEL_ERROR, "(DHK): Failed to allocate memory. (%#X)\n", status);
                     break;
 
                 // Darwin specific errors.
                 case UIOHOOK_ERROR_AXAPI_DISABLED:
-                    logger_proc(LOG_LEVEL_ERROR, "Failed to enable access for assistive devices. (%#X)\n", status);
+                    logger_proc(LOG_LEVEL_ERROR, "(DHK): Failed to enable access for assistive devices. (%#X)\n", status);
                     break;
 
                 case UIOHOOK_ERROR_CREATE_EVENT_PORT:
-                    logger_proc(LOG_LEVEL_ERROR, "Failed to create apple event port. (%#X)\n", status);
+                    logger_proc(LOG_LEVEL_ERROR, "(DHK): Failed to create apple event port. (%#X)\n", status);
                     break;
 
                 case UIOHOOK_ERROR_CREATE_RUN_LOOP_SOURCE:
-                    logger_proc(LOG_LEVEL_ERROR, "Failed to create apple run loop source. (%#X)\n", status);
+                    logger_proc(LOG_LEVEL_ERROR, "(DHK): Failed to create apple run loop source. (%#X)\n", status);
                     break;
 
                 case UIOHOOK_ERROR_GET_RUNLOOP:
-                    logger_proc(LOG_LEVEL_ERROR, "Failed to acquire apple run loop. (%#X)\n", status);
+                    logger_proc(LOG_LEVEL_ERROR, "(DHK): Failed to acquire apple run loop. (%#X)\n", status);
                     break;
 
                 case UIOHOOK_ERROR_CREATE_OBSERVER:
-                    logger_proc(LOG_LEVEL_ERROR, "Failed to create apple run loop observer. (%#X)\n", status);
+                    logger_proc(LOG_LEVEL_ERROR, "(DHK): Failed to create apple run loop observer. (%#X)\n", status);
                     break;
 
                 // Default error.
                 case UIOHOOK_FAILURE:
                 default:
-                    logger_proc(LOG_LEVEL_ERROR, "An unknown hook error occurred. (%#X)\n", status);
+                    logger_proc(LOG_LEVEL_ERROR, "(DHK): An unknown hook error occurred. (%#X)\n", status);
                     break;
             }
     }
+    return status;
+}
+
+Napi::Number HotKeys::start(const Napi::CallbackInfo& info)
+{
+    if (info.Length() > 0 && info[0].IsBoolean()) {
+    	verboseMode = info[0].As<Napi::Boolean>();
+    	if (verboseMode) {
+    	    fprintf(stderr, "(DHK): Starting module, verbose logging is on");
+    	}
+    }
+    int status = installHookProc();
 	Napi::Env env = info.Env();
-	return Napi::Number::New(env, 0);
+	return Napi::Number::New(env, status == 0 ? 1 : 0);
 }
 
 Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
@@ -530,18 +480,18 @@ Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
 
                     // System level errors.
                     case UIOHOOK_ERROR_OUT_OF_MEMORY:
-                        logger_proc(LOG_LEVEL_ERROR, "Failed to allocate memory. (%#X)", status);
+                        logger_proc(LOG_LEVEL_ERROR, "(DHK): Failed to allocate memory. (%#X)", status);
                         break;
 
                     case UIOHOOK_ERROR_X_RECORD_GET_CONTEXT:
                         // NOTE This is the only platform specific error that occurs on hook_stop().
-                        logger_proc(LOG_LEVEL_ERROR, "Failed to get XRecord context. (%#X)", status);
+                        logger_proc(LOG_LEVEL_ERROR, "(DHK): Failed to get XRecord context. (%#X)", status);
                         break;
 
                     // Default error.
                     case UIOHOOK_FAILURE:
                     default:
-                        logger_proc(LOG_LEVEL_ERROR, "An unknown hook error occurred. (%#X)", status);
+                        logger_proc(LOG_LEVEL_ERROR, "(DHK): An unknown hook error occurred. (%#X)", status);
                         break;
                 }
 
@@ -554,7 +504,7 @@ Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
                     // CFRunLoopRun();
                     #endif
 
-                    pthread_join(hook_thread, NULL);
+                    // *** pthread_join(hook_thread, NULL);
                     #endif
             #ifdef _WIN32
             // Create event handles for the thread hook.
@@ -666,73 +616,4 @@ Napi::Array HotKeys::pressedKeyCodes(const Napi::CallbackInfo& info)
 	    arr[idx] = Napi::Number::New(env, keys[idx]);
 	}
 	return arr;
-}
-
-Napi::Boolean HotKeys::macCheckAccessibilityGranted(const Napi::CallbackInfo& info)
-{
-	Napi::Env env = info.Env();
-	return Napi::Boolean::New(env, AXIsProcessTrusted());
-}
-
-Napi::Number HotKeys::macSubscribeAccessibilityUpdates(const Napi::CallbackInfo& info)
-{
-	Napi::Env env = info.Env();
-	if (info.Length() < 1 || !info[0].IsFunction()) {
-    	Napi::TypeError::New(env, "accessibility check cb is required").ThrowAsJavaScriptException();
-    }
-    if (subscribedForAccNotifications) {
-        macUnsubscribeAccessibilityUpdates(info);
-    }
-    fprintf(stderr, "\r\n*** macSubscribeAccessibilityUpdates: Access %s\r\n", AXIsProcessTrusted() ? "enabled":"disabled");
-	g_fnAccChanged = Napi::ThreadSafeFunction::New(
-        env,
-        info[0].As<Napi::Function>(),
-        "desktop-hotkeys acc changed cb",
-        0,
-        1);
-    CFNotificationCenterAddObserver(
-        CFNotificationCenterGetDistributedCenter(),
-        &g_fnAccChanged,
-        onAccChanged,
-        CFSTR("com.apple.accessibility.api"),
-        nil,
-        CFNotificationSuspensionBehaviorDeliverImmediately);
-    return Napi::Number::New(env, 0);
-}
-
-Napi::Number HotKeys::macUnsubscribeAccessibilityUpdates(const Napi::CallbackInfo& info)
-{
-	Napi::Env env = info.Env();
-	CFNotificationCenterRemoveObserver(
-	    CFNotificationCenterGetDistributedCenter(),
-	    &g_fnAccChanged,
-	    CFSTR("com.apple.accessibility.api"),
-	    nil);
-    g_fnAccChanged.Release();
-    subscribedForAccNotifications = false;
-	return Napi::Number::New(env, 0);
-}
-
-Napi::Number HotKeys::macShowAccessibilitySettings(const Napi::CallbackInfo& info)
-{
-    NSString *urlString = @"x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
-    [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:urlString]];
-	Napi::Env env = info.Env();
-	return Napi::Number::New(env, 0);
-}
-
-Napi::Object InitAll(Napi::Env env, Napi::Object exports)
-{
-	exports.Set("start", Napi::Function::New(env, HotKeys::start));
-	exports.Set("stop", Napi::Function::New(env, HotKeys::stop));
-	exports.Set("collectPressedKeyCodes", Napi::Function::New(env, HotKeys::collectPressedKeyCodes));
-    exports.Set("pressedKeyCodes", Napi::Function::New(env, HotKeys::pressedKeyCodes));
-	exports.Set("registerShortcut", Napi::Function::New(env, HotKeys::registerShortcut));
-	exports.Set("unregisterShortcut", Napi::Function::New(env, HotKeys::unregisterShortcut));
-	exports.Set("unregisterAllShortcuts", Napi::Function::New(env, HotKeys::unregisterAllShortcuts));
-	exports.Set("macCheckAccessibilityGranted", Napi::Function::New(env, HotKeys::macCheckAccessibilityGranted));
-	exports.Set("macShowAccessibilitySettings", Napi::Function::New(env, HotKeys::macShowAccessibilitySettings));
-	exports.Set("macSubscribeAccessibilityUpdates", Napi::Function::New(env, HotKeys::macSubscribeAccessibilityUpdates));
-	exports.Set("macUnsubscribeAccessibilityUpdates", Napi::Function::New(env, HotKeys::macUnsubscribeAccessibilityUpdates));
-	return exports;
 }

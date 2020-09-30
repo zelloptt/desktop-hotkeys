@@ -8,11 +8,13 @@
       	"conditions":[
       		["OS=='mac'", {
       		    "sources": [
+      		        "src/AddonMac.mm",
+      		        "src/AccessibilityMac.mm",
       		        "src/HotkeysMac.mm",
       		        "src/main.cpp"
       		    ],
       		    'include_dirs': [
-                    "uiohook/include"
+                    "libuiohook/include"
                 ],
       		    'libraries': [
                     "Release/uiohook.a"
