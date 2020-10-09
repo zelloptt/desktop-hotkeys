@@ -33,8 +33,7 @@ const hk2 = dh.registerShortcut([ CTRL, ALT, F7 ], fnPressed2, fnReleased2, true
 console.log('2nd registerShortcut returned ' + hk2);
 
  dh.registerShortcut([ CTRL, ALT, F6 ], fnPressed2)
-}catch (ex) {
+} catch (ex) {
 console.log('exception ' + ex);
 }
 console.log('waiting for hotkeys...');
-
