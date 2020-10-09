@@ -39,4 +39,3 @@ try {
 	console.log('exception ' + ex);
 }
 console.log('waiting for hotkeys...');
-
