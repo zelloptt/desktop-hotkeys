@@ -1,9 +1,9 @@
 class ShortcutHelper {
 	constructor() {
-			this.impl = require('node-gyp-build')(__dirname);
-			if (process.platform === 'darwin') {
-				this.macImpl = require('node-gyp-build')(__dirname);
-			}
+		this.impl = require('node-gyp-build')(__dirname);
+		if (process.platform === 'darwin') {
+			this.macImpl = require('node-gyp-build')(__dirname);
+		}
 	}
 
 	start(enableLogger) {
@@ -34,7 +34,6 @@ class ShortcutHelper {
 			throw new TypeError('win32 impl does not track the keys');
 		}
 		this.impl.collectPressedKeyCodes(true);
-		return true;
 	}
 
 	stopCollectingKeys() {
