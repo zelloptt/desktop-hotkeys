@@ -5,7 +5,7 @@ Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 	exports.Set("start", Napi::Function::New(env, HotKeys::start));
 	exports.Set("stop", Napi::Function::New(env, HotKeys::stop));
 	exports.Set("collectPressedKeyCodes", Napi::Function::New(env, HotKeys::collectPressedKeyCodes));
-    exports.Set("pressedKeyCodes", Napi::Function::New(env, HotKeys::pressedKeyCodes));
+	exports.Set("pressedKeyCodes", Napi::Function::New(env, HotKeys::pressedKeyCodes));
 	exports.Set("registerShortcut", Napi::Function::New(env, HotKeys::registerShortcut));
 	exports.Set("unregisterShortcut", Napi::Function::New(env, HotKeys::unregisterShortcut));
 	exports.Set("unregisterAllShortcuts", Napi::Function::New(env, HotKeys::unregisterAllShortcuts));

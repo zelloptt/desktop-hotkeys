@@ -43,11 +43,11 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 	bool keysAreVirtualCodes = false;
 	unsigned argCount = info.Length();
 	while (argCount > 0) {
-	    if (info[argCount - 1].IsEmpty() || info[argCount -1].IsUndefined() || info[argCount -1].IsNull()) {
-	        argCount = argCount -1;
-	    } else {
-	        break;
-	    }
+		if (info[argCount - 1].IsEmpty() || info[argCount - 1].IsUndefined() || info[argCount - 1].IsNull()) {
+			argCount = argCount - 1;
+		} else {
+			break;
+		}
 	}
 
 	if (argCount >= 3 && info[0].IsArray() && info[1].IsFunction() && info[2].IsFunction()) {
@@ -61,7 +61,7 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 		arrKeys = info[0].As<Napi::Array>();
 		fnPressed = info[1].As<Napi::Function>();
 	} else {
-	    log("(DHK): invalid registerShortcut arguments: Array/Function/Function or Array/Function expected");
+		log("(DHK): invalid registerShortcut arguments: Array/Function/Function or Array/Function expected");
 		Napi::TypeError::New(env, "invalid registerShortcut arguments: Array/Function/Function or Array/Function expected").ThrowAsJavaScriptException();
 		return Napi::Number::New(env, 0);
 	}
@@ -111,17 +111,17 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 	if (g_pHotKeyManager && g_pHotKeyManager->Valid()) {
 		uRetValue = g_pHotKeyManager->registerShortcut(wKeyCode, wMod,
 			Napi::ThreadSafeFunction::New(
-				env,
-				fnPressed,
-				"desktop-hotkeys pressed cb",
-				0,
-				2),
+			env,
+			fnPressed,
+			"desktop-hotkeys pressed cb",
+			0,
+			2),
 			Napi::ThreadSafeFunction::New(
-				env,
-				fnReleased,
-				"desktop-hotkeys released cb ",
-				0,
-				2)
+			env,
+			fnReleased,
+			"desktop-hotkeys released cb ",
+			0,
+			2)
 		);
 	}
 	return Napi::Number::New(env, uRetValue);
@@ -160,22 +160,22 @@ T macAccessibilityUnavailable(const Napi::CallbackInfo& info, TPrim defValue)
 
 Napi::Number HotKeys::macShowAccessibilitySettings(const Napi::CallbackInfo& info)
 {
-    return macAccessibilityUnavailable<Napi::Number, double>(info, -1);
+	return macAccessibilityUnavailable<Napi::Number, double>(info, -1);
 }
 
 Napi::Number HotKeys::macSubscribeAccessibilityUpdates(const Napi::CallbackInfo& info)
 {
-    return macAccessibilityUnavailable<Napi::Number, double>(info, -1);
+	return macAccessibilityUnavailable<Napi::Number, double>(info, -1);
 }
 
 Napi::Number HotKeys::macUnsubscribeAccessibilityUpdates(const Napi::CallbackInfo& info)
 {
-    return macAccessibilityUnavailable<Napi::Number, double>(info, -1);
+	return macAccessibilityUnavailable<Napi::Number, double>(info, -1);
 }
 
 Napi::Boolean HotKeys::macCheckAccessibilityGranted(const Napi::CallbackInfo& info)
 {
-    return macAccessibilityUnavailable<Napi::Boolean, bool>(info, true);
+	return macAccessibilityUnavailable<Napi::Boolean, bool>(info, true);
 }
 
 Napi::Object InitAll(Napi::Env env, Napi::Object exports)
@@ -188,6 +188,6 @@ Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 	exports.Set("macCheckAccessibilityGranted", Napi::Function::New(env, HotKeys::macCheckAccessibilityGranted));
 	exports.Set("macShowAccessibilitySettings", Napi::Function::New(env, HotKeys::macShowAccessibilitySettings));
 	exports.Set("macSubscribeAccessibilityUpdates", Napi::Function::New(env, HotKeys::macSubscribeAccessibilityUpdates));
-    exports.Set("macUnsubscribeAccessibilityUpdates", Napi::Function::New(env, HotKeys::macUnsubscribeAccessibilityUpdates));
+	exports.Set("macUnsubscribeAccessibilityUpdates", Napi::Function::New(env, HotKeys::macUnsubscribeAccessibilityUpdates));
 	return exports;
 }

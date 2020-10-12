@@ -10,47 +10,47 @@ T emptyImpl(const Napi::CallbackInfo& info, TPrim defValue)
 
 Napi::Number HotKeys::start(const Napi::CallbackInfo& info)
 {
-    return emptyImpl<Napi::Number, double>(info, -1);
+	return emptyImpl<Napi::Number, double>(info, -1);
 }
 
 Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
 {
-    return emptyImpl<Napi::Number, double>(info, -1);
+	return emptyImpl<Napi::Number, double>(info, -1);
 }
 
 Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 {
-    return emptyImpl<Napi::Number, double>(info, -1);
+	return emptyImpl<Napi::Number, double>(info, -1);
 }
 
 Napi::Number HotKeys::unregisterShortcut(const Napi::CallbackInfo& info)
 {
-    return emptyImpl<Napi::Number, double>(info, -1);
+	return emptyImpl<Napi::Number, double>(info, -1);
 }
 
 Napi::Number HotKeys::unregisterAllShortcuts(const Napi::CallbackInfo& info)
 {
-    return emptyImpl<Napi::Number, double>(info, -1);
+	return emptyImpl<Napi::Number, double>(info, -1);
 }
 
 Napi::Number HotKeys::macShowAccessibilitySettings(const Napi::CallbackInfo& info)
 {
-    return emptyImpl<Napi::Number, double>(info, -1);
+	return emptyImpl<Napi::Number, double>(info, -1);
 }
 
 Napi::Number HotKeys::macSubscribeAccessibilityUpdates(const Napi::CallbackInfo& info)
 {
-    return emptyImpl<Napi::Number, double>(info, -1);
+	return emptyImpl<Napi::Number, double>(info, -1);
 }
 
 Napi::Number HotKeys::macUnsubscribeAccessibilityUpdates(const Napi::CallbackInfo& info)
 {
-    return emptyImpl<Napi::Number, double>(info, -1);
+	return emptyImpl<Napi::Number, double>(info, -1);
 }
 
 Napi::Boolean HotKeys::macCheckAccessibilityGranted(const Napi::CallbackInfo& info)
 {
-    return emptyImpl<Napi::Boolean, bool>(info, true);
+	return emptyImpl<Napi::Boolean, bool>(info, true);
 }
 
 Napi::Object InitAll(Napi::Env env, Napi::Object exports)
