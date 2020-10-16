@@ -1,8 +1,8 @@
 class ShortcutHelper {
 	constructor() {
-		this.impl = require('node-gyp-build')(__dirname);
+		this.impl = require('bindings')('binding.node');
 		if (process.platform === 'darwin') {
-			this.macImpl = require('node-gyp-build')(__dirname);
+			this.macImpl = require('bindings')('binding.node');
 		}
 	}
 
