@@ -9,7 +9,7 @@
     "prebuild32": "prebuild --runtime napi --all --strip --verbose -a ia32",
     "rebuild": "node-gyp rebuild",
     "clean": "node-gyp clean",
-    "install": "prebuild-install --runtime napi || node-gyp rebuild",
+    "install": "prebuild-install --runtime napi --verbose || node-gyp rebuild",
     "test": "echo \"Test not applicable\""
   },
   "license": "ISC",
@@ -30,7 +30,7 @@
   "binary": {
     "module_name": "desktop-hotkeys",
     "napi_versions": [
-      6
+      4,5,6
     ]
   },
   "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
