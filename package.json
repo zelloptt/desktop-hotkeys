@@ -7,7 +7,7 @@
   "scripts": {
     "build": "node-gyp rebuild",
     "clean": "node-gyp clean",
-    "install": "node-gyp-build",
+    "install": "node-pre-gyp install --fallback-to-build",
     "test": "echo \"Test not applicable\""
   },
   "license": "ISC",
@@ -25,6 +25,14 @@
   "bugs": {
     "url": "https://github.com/zelloptt/desktop-hotkeys/issues"
   },
+  "binary": {
+     "module_name": "desktop-hotkeys",
+     "module_path": "./lib/binding/napi-v{napi_build_version}-{platform}-{arch}",
+     "host": "https://github.com/EugeneP-Zello/desktop-hotkeys/releases/download/",
+     "remote_path": "{version}",
+     "package_name": "napi-v{napi_build_version}-{platform}-{arch}.tar.gz",
+     "napi_versions": [6]
+  },
   "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
   "devDependencies": {
     "np": "^6.5.0"
@@ -36,6 +44,7 @@
   "dependencies": {
     "node-addon-api": "^3.0.2",
     "node-gyp": "7.1.0",
-    "node-gyp-build": "4.2.3"
+    "node-gyp-build": "4.2.3",
+    "node-pre-gyp": "^0.15.0"
   }
 }
