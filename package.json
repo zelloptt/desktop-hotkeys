@@ -1,6 +1,6 @@
 {
   "name": "desktop-hotkeys",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "description": "This package provides press/release callbacks for system-wide hotkeys on Windows",
   "main": "index.js",
   "gypfile": true,
@@ -30,7 +30,9 @@
   "binary": {
     "module_name": "desktop-hotkeys",
     "napi_versions": [
-      4,5,6
+      4,
+      5,
+      6
     ]
   },
   "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
