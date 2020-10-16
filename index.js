@@ -1,8 +1,8 @@
 class ShortcutHelper {
 	constructor() {
-		this.impl = require('bindings')('binding.node');
+		this.impl = require('bindings')('desktop_hotkeys.node');
 		if (process.platform === 'darwin') {
-			this.macImpl = require('bindings')('binding.node');
+			this.macImpl = require('bindings')('desktop_hotkeys.node');
 		}
 	}
 
