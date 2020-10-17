@@ -7,9 +7,11 @@
   "scripts": {
     "prebuild": "prebuild --runtime napi --all --strip --verbose",
     "prebuild32": "prebuild --runtime napi --all --strip --verbose -a ia32",
+    "prebuild-electron": "prebuild -t 9.2.1 -t 9.0.0 -r electron --strip",
+    "prebuild-electron-ia32": "prebuild -t 9.0.0 -t 9.2.1 -r electron -a ia32 --strip",
     "rebuild": "node-gyp rebuild",
     "clean": "node-gyp clean",
-    "install": "prebuild-install --runtime napi --verbose || node-gyp rebuild",
+    "install": "prebuild-install --verbose || node-gyp rebuild",
     "test": "echo \"Test not applicable\""
   },
   "license": "ISC",
