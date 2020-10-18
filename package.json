@@ -1,6 +1,6 @@
 {
   "name": "desktop-hotkeys",
-  "version": "1.4.3",
+  "version": "1.4.8",
   "description": "This package provides press/release callbacks for system-wide hotkeys on Windows",
   "main": "index.js",
   "gypfile": true,
@@ -26,15 +26,20 @@
     "url": "https://github.com/zelloptt/desktop-hotkeys/issues"
   },
   "binary": {
-     "module_name": "desktop-hotkeys",
-     "module_path": "./lib/binding/napi-v{napi_build_version}-{platform}-{arch}",
-     "host": "https://github.com/EugeneP-Zello/desktop-hotkeys/releases/download/",
-     "remote_path": "{version}",
-     "package_name": "napi-v{napi_build_version}-{platform}-{arch}.tar.gz",
-     "napi_versions": [6]
+    "module_name": "desktop_hotkeys",
+    "module_path": "./lib/binding/napi-v{napi_build_version}",
+    "remote_path": "./{module_name}/v{version}/{configuration}",
+    "host": "https://zello-desktop.s3.amazonaws.com",
+    "package_name": "napi-v{napi_build_version}-{platform}-{arch}.tar.gz",
+    "napi_versions": [
+      4,
+      5,
+      6
+    ]
   },
   "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
   "devDependencies": {
+    "aws-sdk": "^2.773.0",
     "np": "^6.5.0"
   },
   "np": {
@@ -44,7 +49,6 @@
   "dependencies": {
     "node-addon-api": "^3.0.2",
     "node-gyp": "7.1.0",
-    "node-gyp-build": "4.2.3",
     "node-pre-gyp": "^0.15.0"
   }
 }
