@@ -3,3 +3,9 @@
 /sample/node_modules
 /.node_pre_gyprc
 /.prebuildrc
+/init.cmd
+/build-tmp-napi-v4
+/build-tmp-napi-v5
+/build-tmp-napi-v6
+/lib
+/prebuilds/*.gz
