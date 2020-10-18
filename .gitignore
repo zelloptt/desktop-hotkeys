@@ -1,3 +1,5 @@
 /node_modules
 /build
 /sample/node_modules
+/.node_pre_gyprc
+/.prebuildrc
