@@ -99,7 +99,7 @@ DWORD HotKeyManager::registerShortcut(WORD wKeyCode, WORD wMod, const Napi::Thre
 	}
 	WPARAM wParam = MAKEWPARAM(wKeyCode, wMod);
 	std::string s("DesktopHotkey#");
-	char buf[32] = { 0 };
+	char buf[32] = {0};
 	s.append(itoa(wParam, buf, 16));
 	ATOM atm = GlobalAddAtomA(s.c_str());
 	if (atm) {
