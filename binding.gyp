@@ -1,6 +1,6 @@
 {
     "targets": [{
-        "target_name": "desktop_hotkeys",
+        "target_name": "<(module_name)",
         "cflags!": [ "-fno-exceptions" ],
         "cflags_cc!": [ "-fno-exceptions" ],
         "sources": [
