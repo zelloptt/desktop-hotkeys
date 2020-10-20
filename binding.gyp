@@ -16,9 +16,20 @@
       		    'include_dirs': [
                     "libuiohook/include"
                 ],
-      		    'libraries': [
-                    "Release/uiohook.a"
-                ],
+                'configurations': {
+                    'Debug': {
+                       'xcode_settings': {
+                          'OTHER_LDFLAGS': [
+                          ]
+                       }
+                    },
+                    'Release': {
+                        'xcode_settings': {
+                           'OTHER_LDFLAGS': [
+                           ]
+                        }
+                    }
+                },
                 'dependencies': [
                     "./uiohook.gyp:uiohook"
                 ],
