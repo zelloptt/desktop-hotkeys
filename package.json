@@ -6,9 +6,9 @@
   "gypfile": true,
   "scripts": {
     "install": "node-pre-gyp install --fallback-to-build",
-    "make": "node-pre-gyp rebuild --build-from-source package info",
+    "make": "node-pre-gyp rebuild --build-from-source package publish",
     "make32": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=ia32 package publish",
-    "maked": "node-pre-gyp rebuild --build-from-source --debug --verbose --target_arch=ia32 package publish",
+    "maked": "node-pre-gyp rebuild --build-from-source --debug --verbose package publish",
     "test": "echo \"Test not applicable\""
   },
   "license": "ISC",

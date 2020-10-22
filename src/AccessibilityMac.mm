@@ -63,8 +63,8 @@ Napi::Number HotKeys::macUnsubscribeAccessibilityUpdates(const Napi::CallbackInf
 
 Napi::Number HotKeys::macShowAccessibilitySettings(const Napi::CallbackInfo& info)
 {
-	NSString *urlString = @"x-apple.systempreferences:com.apple.preference.security ? Privacy_Accessibility";
-		[[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString : urlString]];
+	NSString *urlString = @"x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
+    [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:urlString]];
 	Napi::Env env = info.Env();
 	return Napi::Number::New(env, 0);
 }

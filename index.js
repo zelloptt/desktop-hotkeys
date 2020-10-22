@@ -4,9 +4,6 @@ class ShortcutHelper {
 		const path = require('path');
 		const binding_path = binary.find(path.resolve(path.join(__dirname, './package.json')));
 		this.impl = require(binding_path);
-		if (process.platform === 'darwin') {
-			this.macImpl = require(binding_path);;
-		}
 	}
 
 	start(enableLogger) {
@@ -55,22 +52,22 @@ class ShortcutHelper {
 	setupAccessibilityCallback(enable, cb) {
 		if (process.platform === 'darwin') {
 			if (enable) {
-				return this.macImpl.macSubscribeAccessibilityUpdates(cb);
+				return this.impl.macSubscribeAccessibilityUpdates(cb);
 			} else {
-				return this.macImpl.macUnsubscribeAccessibilityUpdates();
+				return this.impl.macUnsubscribeAccessibilityUpdates();
 			}
 		}
 	}
 
 	showAccessibilitySettings() {
 		if (process.platform === 'darwin') {
-			this.macImpl.macShowAccessibilitySettings();
+			this.impl.macShowAccessibilitySettings();
 		}
 	}
 
 	checkAccessibility() {
 		if (process.platform === 'darwin') {
-			return this.macImpl.macCheckAccessibilityGranted();
+			return this.impl.macCheckAccessibilityGranted();
 		}
 		return true;
 	}
