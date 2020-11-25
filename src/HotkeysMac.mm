@@ -18,6 +18,9 @@ static bool hookInstalled = false;
 static bool verboseMode = false;
 static unsigned nextHotkeyId = 1;
 
+static bool externalLoggerSet = false;
+static Napi::ThreadSafeFunction g_fnLogFunction; // invoked for every accessibility on/off
+
 static pthread_t hook_thread;
 
 static pthread_mutex_t hook_running_mutex;
@@ -159,9 +162,25 @@ bool logger_proc(unsigned int level, const char *format, ...)
 {
 	va_list args;
 	if (verboseMode || (LOG_LEVEL_ERROR == level)) {
+	    char buf[512];
 		va_start(args, format);
-		vfprintf(stderr, format, args);
+		vsprintf(buf, format, args);
 		va_end(args);
+		if (externalLoggerSet) {
+		    auto callback = []( Napi::Env env, Napi::Function jsCallback, char* pszText ) {
+              // Transform native data into JS data, passing it to the provided
+              // `jsCallback` -- the TSFN's JavaScript function.
+              jsCallback.Call( {Napi::String::New(env, pszText)} );
+
+              // We're finished with the data.
+              // delete value;
+            };
+	        g_fnLogFunction.Acquire();
+        	g_fnLogFunction.BlockingCall(buf, callback);
+        	g_fnLogFunction.Release();
+		} else {
+		    fprintf(stderr, "%s", buf);
+		}
 	}
 	return true;
 }
@@ -177,6 +196,7 @@ void dispatch_proc(uiohook_event * const event)
 
 	switch (event->type) {
 		case EVENT_HOOK_ENABLED:
+			logger_proc(LOG_LEVEL_DEBUG, "(DHK): EVENT_HOOK_ENABLED received");
 			logger_proc(LOG_LEVEL_DEBUG, "***Lock the running mutex so we know if the hook is enabled");
 			// Lock the running mutex so we know if the hook is enabled.
 #ifdef _WIN32
@@ -200,6 +220,7 @@ void dispatch_proc(uiohook_event * const event)
 			break;
 
 		case EVENT_HOOK_DISABLED:
+			logger_proc(LOG_LEVEL_DEBUG, "(DHK): EVENT_HOOK_ENABLED received");
 			// Lock the control mutex until we exit.
 #ifdef _WIN32
 			EnterCriticalSection(&hook_control_mutex);
@@ -417,10 +438,12 @@ int installHookProc()
 		// NOTE If EVENT_HOOK_ENABLED was delivered, the status will always succeed.
 		logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** will call hook_enable\r\n");
 		status = hook_enable();
+		logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** hook_enable returned %d\r\n", status);
 		switch (status) {
 			case UIOHOOK_SUCCESS:
 				hookInstalled = true;
 				CFRunLoopRun();
+		        logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** returned from CFRunLoopRun\r\n");
 				// ***
 				// pthread_join(hook_thread, NULL);
 				break;
@@ -474,6 +497,13 @@ Napi::Number HotKeys::start(const Napi::CallbackInfo& info)
 	return Napi::Number::New(env, status == 0 ? 1 : 0);
 }
 
+Napi::Number HotKeys::restart(const Napi::CallbackInfo& info)
+{
+    hook_restart();
+    Napi::Env env = info.Env();
+    return Napi::Number::New(env, 1);
+}
+
 Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
 {
 	if (hookInstalled) {
@@ -523,7 +553,33 @@ Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
 #endif
 	}
 	hookInstalled = false;
+	if (externalLoggerSet) {
+	    g_fnLogFunction.Release();
+	    externalLoggerSet = false;
+	}
 	Napi::Env env = info.Env();
+	return Napi::Number::New(env, 1);
+}
+
+Napi::Number setLoggerCb(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+	Napi::Function fnLogger;
+	unsigned argCount = info.Length();
+	if (argCount >= 1 && info[0].IsFunction()) {
+		fnLogger = info[0].As<Napi::Function>();
+	} else {
+		logger_proc(LOG_LEVEL_ERROR, "(DHK): invalid setLoggerCb arguments: Function expected");
+		Napi::TypeError::New(env, "invalid setLoggerCb arguments: Function expected").ThrowAsJavaScriptException();
+		return Napi::Number::New(env, 0);
+	}
+	g_fnLogFunction = Napi::ThreadSafeFunction::New(
+		env,
+		fnLogger,
+		"logger cb",
+		0,
+		1);
+	externalLoggerSet = true;
 	return Napi::Number::New(env, 1);
 }
 

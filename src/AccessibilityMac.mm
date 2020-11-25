@@ -4,15 +4,21 @@
 #import <ApplicationServices/ApplicationServices.h>
 #import <AppKit/AppKit.h>
 #include <thread>
+#include <unistd.h>
+
 Napi::ThreadSafeFunction g_fnAccChanged; // invoked for every accessibility on/off
 bool subscribedForAccNotifications = false;
 
 static void* cbCall(void* arg)
 {
+    fprintf(stderr, "\r\n*** starting cb thread\r\n");
+    usleep(1000);
     if (subscribedForAccNotifications) {
 	    g_fnAccChanged.Acquire();
 	    g_fnAccChanged.BlockingCall();
 	    g_fnAccChanged.Release();
+	} else {
+        fprintf(stderr, "\r\n*** skip cb, cb proc not set\r\n");
 	}
 	return arg;
 }
@@ -31,6 +37,7 @@ void runThread()
 }
 - (void)start;
 - (void)stop;
+- (void)refresh;
 - (BOOL)status;
 - (void)didToggleAccessStatus:(NSNotification *)notification;
 @end
@@ -69,6 +76,11 @@ void runThread()
 - (BOOL) status {
     return granted;
 }
+
+- (void) refresh {
+    granted = AXIsProcessTrusted();
+}
+
 -(void)didToggleAccessStatus:(NSNotification *)notification {
     // Accessibility Testbench registered to observe the System Preferences "com.apple.accessibility.api" distributed notification in -applicationDidFinishLaunching:.
     // Logs receipt of the accessibility API notification "com.apple.accessibility.api" when the user grants or denies access to any application in the Privacy pane's Accessibility list in Security & Privacy preferences in System Preferences. Logs the access status of Accessibility Testbench upon receipt of the notification, and then sends the -noteNewAccessStatus: message to capture the application's new access status after a brief delay.
@@ -82,20 +94,20 @@ void runThread()
         explanation = @"The notification contains no useful information.";
     } else {
         // Draw attention to any change in the content of the distributed notification's object and userInfo objects in a new version of OS X.
-        NSBeep();
+        // NSBeep();
         explanation = @"The notification contains important new information.";
     }
     NSLog(@"\n\tIn -didToggleAccessStatus: notification method.\n\t\tReceived notification: %@\n\t\tfrom object: %@\n\t\twith userInfo: %@.\n\t\t%@", [notification name], [notification object], [notification userInfo], explanation); // notification object and userInfo are nil in OS X 10.9.0, 10.9.1 and 10.9.2 Mavericks.
 
     // Get current accessibility status of application. This is solely for purpose of logging its value; the "before" status saved in the accessStatus property is what is passed to -noteNewAccessStatus:.
-    BOOL status = NO;
     if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_8) { // AXIsProcessTrustedWithOptions function was introduced in OS X 10.9 Mavericks
-        status = AXIsProcessTrusted();
+        granted = AXIsProcessTrusted();
     }
 
     // Log the new and old accessibility trust functions to be sure they all return correct results.
     NSLog(@"\n\tIn -didToggleAccessStatus: notification method (before values).\n\t\tAXIsProcessTrustedWithoutAlert: %@\n\t\tAXIsProcessTrusted: %@\n\t\tAXIsAccessEnabled (deprecated): %@", (granted) ? @"YES" : @"NO", (AXIsProcessTrusted()) ? @"YES" : @"NO", (AXAPIEnabled()) ? @"YES" : @"NO");
 
+    runThread();
     // Send -noteNewAccessibilityStatus: message, with the old access status saved in the accessStatus property, half a second after receipt of notification, to get "after" accessibility status. The delay is required in OS X 10.9.0 Mavericks because AXIsProcessTrustedWithOptions: and the other accessibility functions usually return the "before" value when the notification is posted. Experimentation indicates that a delay of as much as half a second after receipt of the notification is sometimes necessary to get the "after" value.
     //[self performSelector:@selector(noteNewAccessStatus:) withObject:[NSNumber numberWithBool:[self accessStatus]] afterDelay:0.5]; // 0.5 seconds
 }
@@ -117,9 +129,6 @@ Napi::Number HotKeys::macSubscribeAccessibilityUpdates(const Napi::CallbackInfo&
 	if (info.Length() < 1 || !info[0].IsFunction()) {
 		Napi::TypeError::New(env, "accessibility check cb is required").ThrowAsJavaScriptException();
 	}
-	if (subscribedForAccNotifications) {
-		macUnsubscribeAccessibilityUpdates(info);
-	}
 	fprintf(stderr, "\r\n*** macSubscribeAccessibilityUpdates: Access %s\r\n", AXIsProcessTrusted() ? "enabled" : "disabled");
 	g_fnAccChanged = Napi::ThreadSafeFunction::New(
 		env,
@@ -127,6 +136,8 @@ Napi::Number HotKeys::macSubscribeAccessibilityUpdates(const Napi::CallbackInfo&
 		"desktop-hotkeys acc changed cb",
 		0,
 		1);
+	subscribedForAccNotifications = true;
+
 /*	CFNotificationCenterAddObserver(
 		CFNotificationCenterGetDistributedCenter(),
 		&g_fnAccChanged,
@@ -134,7 +145,7 @@ Napi::Number HotKeys::macSubscribeAccessibilityUpdates(const Napi::CallbackInfo&
 		CFSTR("com.apple.accessibility.api"),
 		nil,
 		CFNotificationSuspensionBehaviorDeliverImmediately);*/
-	return Napi::Number::New(env, 0);
+	return Napi::Number::New(env, AXAPIEnabled() ? 0 : -1);
 }
 
 Napi::Number HotKeys::macUnsubscribeAccessibilityUpdates(const Napi::CallbackInfo& info)

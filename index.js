@@ -16,8 +16,18 @@ class ShortcutHelper {
 
 	reload() {
 		this.impl.unregisterAllShortcuts();
-		this.impl.stop();
-		this.impl.start(false);
+		if (process.platform === 'darwin') {
+			this.impl.restart();
+		} else {
+			this.impl.stop();
+			this.impl.start(false);
+		}
+	}
+
+	setLoggerCb(callback) {
+		if (process.platform === 'darwin') {
+			this.impl.setLoggerCb(callback);
+		}
 	}
 
 	registerShortcut(keys, callback, releaseCallback, keysAreVKC) {
