@@ -9,16 +9,37 @@
 Napi::ThreadSafeFunction g_fnAccChanged; // invoked for every accessibility on/off
 bool subscribedForAccNotifications = false;
 
+bool logger_proc(unsigned int level, const char *format, ...);
+
+@interface AccObserver : NSObject {
+    BOOL granted;
+}
++ (id)get;
+- (void)start;
+- (void)stop;
+- (void)refresh;
+- (BOOL)status;
+- (void)didToggleAccessStatus:(NSNotification *)notification;
+@end
+
 static void* cbCall(void* arg)
 {
-    fprintf(stderr, "\r\n*** starting cb thread\r\n");
+    logger_proc(1, "\r\n*** starting cb thread\r\n");
     usleep(1000);
     if (subscribedForAccNotifications) {
+        AccObserver *obj = [AccObserver get];
+        [obj refresh];
+        BOOL* ptrGranted = new BOOL;
+        * ptrGranted = [obj status];
 	    g_fnAccChanged.Acquire();
-	    g_fnAccChanged.BlockingCall();
-	    g_fnAccChanged.Release();
+	    auto callback = []( Napi::Env env, Napi::Function jsCallback, BOOL* ptrArg ) {
+            jsCallback.Call( {Napi::Boolean::New(env, *ptrArg)} );
+            delete ptrArg;
+        };
+        g_fnAccChanged.BlockingCall(ptrGranted, callback);
+        g_fnAccChanged.Release();
 	} else {
-        fprintf(stderr, "\r\n*** skip cb, cb proc not set\r\n");
+	    logger_proc(1, "\r\n*** skip cb, cb proc not set\r\n");
 	}
 	return arg;
 }
@@ -31,16 +52,6 @@ void runThread()
 	pthread_create(&threadCb, &attr, cbCall, nullptr);
 	pthread_attr_destroy(&attr);
 }
-
-@interface AccObserver : NSObject {
-    BOOL granted;
-}
-- (void)start;
-- (void)stop;
-- (void)refresh;
-- (BOOL)status;
-- (void)didToggleAccessStatus:(NSNotification *)notification;
-@end
 
 @implementation AccObserver
 
@@ -106,6 +117,7 @@ void runThread()
 
     // Log the new and old accessibility trust functions to be sure they all return correct results.
     NSLog(@"\n\tIn -didToggleAccessStatus: notification method (before values).\n\t\tAXIsProcessTrustedWithoutAlert: %@\n\t\tAXIsProcessTrusted: %@\n\t\tAXIsAccessEnabled (deprecated): %@", (granted) ? @"YES" : @"NO", (AXIsProcessTrusted()) ? @"YES" : @"NO", (AXAPIEnabled()) ? @"YES" : @"NO");
+    logger_proc(1, "\n\tIn -didToggleAccessStatus: notification method (before values).\n\t\tAXIsProcessTrustedWithoutAlert: %s\n\t\tAXIsProcessTrusted: %s\n\t\tAXIsAccessEnabled (deprecated): %s", (granted) ? "YES" : "NO", AXIsProcessTrusted() ? "YES" : "NO", AXAPIEnabled() ? "YES" : "NO");
 
     runThread();
     // Send -noteNewAccessibilityStatus: message, with the old access status saved in the accessStatus property, half a second after receipt of notification, to get "after" accessibility status. The delay is required in OS X 10.9.0 Mavericks because AXIsProcessTrustedWithOptions: and the other accessibility functions usually return the "before" value when the notification is posted. Experimentation indicates that a delay of as much as half a second after receipt of the notification is sometimes necessary to get the "after" value.
@@ -129,7 +141,7 @@ Napi::Number HotKeys::macSubscribeAccessibilityUpdates(const Napi::CallbackInfo&
 	if (info.Length() < 1 || !info[0].IsFunction()) {
 		Napi::TypeError::New(env, "accessibility check cb is required").ThrowAsJavaScriptException();
 	}
-	fprintf(stderr, "\r\n*** macSubscribeAccessibilityUpdates: Access %s\r\n", AXIsProcessTrusted() ? "enabled" : "disabled");
+	logger_proc(1, "\r\n*** macSubscribeAccessibilityUpdates: Access %s\r\n", AXIsProcessTrusted() ? "enabled" : "disabled");
 	g_fnAccChanged = Napi::ThreadSafeFunction::New(
 		env,
 		info[0].As<Napi::Function>(),

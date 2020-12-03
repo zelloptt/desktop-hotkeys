@@ -27,6 +27,9 @@ static pthread_mutex_t hook_running_mutex;
 static pthread_mutex_t hook_control_mutex;
 static pthread_cond_t hook_control_cond;
 
+bool logger_proc(unsigned int level, const char *format, ...);
+void dispatch_proc(uiohook_event * const event);
+
 class HotKey
 {
 	Napi::ThreadSafeFunction _pressedCb;
@@ -149,7 +152,9 @@ public:
 		pthread_mutex_init(&hook_running_mutex, NULL);
 		pthread_mutex_init(&hook_control_mutex, NULL);
 		pthread_cond_init(&hook_control_cond, NULL);
-	}
+		hook_set_logger_proc(&logger_proc);
+        hook_set_dispatch_proc(&dispatch_proc);
+    }
 	~Initter()
 	{
 		pthread_mutex_destroy(&hook_running_mutex);
@@ -162,7 +167,7 @@ bool logger_proc(unsigned int level, const char *format, ...)
 {
 	va_list args;
 	if (verboseMode || (LOG_LEVEL_ERROR == level)) {
-	    char buf[512];
+	    char* buf = new char[512];
 		va_start(args, format);
 		vsprintf(buf, format, args);
 		va_end(args);
@@ -173,13 +178,14 @@ bool logger_proc(unsigned int level, const char *format, ...)
               jsCallback.Call( {Napi::String::New(env, pszText)} );
 
               // We're finished with the data.
-              // delete value;
+              delete[] pszText;
             };
 	        g_fnLogFunction.Acquire();
         	g_fnLogFunction.BlockingCall(buf, callback);
         	g_fnLogFunction.Release();
 		} else {
 		    fprintf(stderr, "%s", buf);
+		    delete[] buf;
 		}
 	}
 	return true;
@@ -247,7 +253,7 @@ void dispatch_proc(uiohook_event * const event)
 			hotKeyStore.onKeyEvent(event->data.keyboard.keycode, event->type == EVENT_KEY_PRESSED);
 			keyCollection.onKeyEvent(event->data.keyboard.keycode, event->type == EVENT_KEY_PRESSED);
 			if (verboseMode) {
-				fprintf(stderr, "(DHK): id=%i,mask=0x%X,keycode=%u,char=(%u)rawcode=0x%X",
+				logger_proc(LOG_LEVEL_DEBUG, "(DHK): id=%i,mask=0x%X,keycode=%u,char=(%u)rawcode=0x%X",
 					event->type, event->mask,
 					event->data.keyboard.keycode, event->data.keyboard.keychar, event->data.keyboard.rawcode);
 			}
@@ -255,7 +261,7 @@ void dispatch_proc(uiohook_event * const event)
 
 		case EVENT_KEY_TYPED:
 			if (verboseMode) {
-				fprintf(stderr, "(DHK): id=%i,mask=0x%X,keychar=%lc,rawcode=%u",
+				logger_proc(LOG_LEVEL_DEBUG, "(DHK): id=%i,mask=0x%X,keychar=%lc,rawcode=%u",
 					event->type, event->mask,
 					(wint_t)event->data.keyboard.keychar,
 					event->data.keyboard.rawcode);
@@ -432,8 +438,6 @@ int installHookProc()
 {
 	int status = UIOHOOK_SUCCESS;
 	if (!hookInstalled) {
-		hook_set_logger_proc(&logger_proc);
-		hook_set_dispatch_proc(&dispatch_proc);
 		// Start the hook and block.
 		// NOTE If EVENT_HOOK_ENABLED was delivered, the status will always succeed.
 		logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** will call hook_enable\r\n");
@@ -444,8 +448,8 @@ int installHookProc()
 				hookInstalled = true;
 				CFRunLoopRun();
 		        logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** returned from CFRunLoopRun\r\n");
-				// ***
-				// pthread_join(hook_thread, NULL);
+				pthread_join(hook_thread, NULL);
+		        logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** pthread_join(hook_thread) has finished\r\n");
 				break;
 
 				// System level errors.
@@ -484,22 +488,56 @@ int installHookProc()
 	return status;
 }
 
+static void* serviceHookThread(void* arg)
+{
+    int* p = reinterpret_cast<int*>(arg);
+    bool startHook = (*p == 0 ? false : true);
+    delete p;
+    logger_proc(LOG_LEVEL_DEBUG, "\r\n(DHK) serviceHookThread:%s\r\n", (startHook ? "<start>" : "<stop>"));
+    if (startHook) {
+        installHookProc();
+    } else {
+        hookInstalled = false;
+        hook_stop();
+        logger_proc(LOG_LEVEL_DEBUG, "\r\n(DHK) hook_stop called\r\n");
+        int *hook_thread_status = (int*)malloc(sizeof(int));
+        pthread_join(hook_thread, (void **)&hook_thread_status);
+        free(hook_thread_status);
+		//int unlocked = pthread_mutex_unlock(&hook_running_mutex);
+        logger_proc(LOG_LEVEL_DEBUG, "(DHK): %s [%u]: hook stopped\n",__FUNCTION__, __LINE__);
+    }
+	return arg;
+}
+
+void runStartStopThread(bool startHook)
+{
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_t threadCb;
+	int* arg = new int;
+	*arg = startHook ? 1 : 0;
+	pthread_create(&threadCb, &attr, serviceHookThread, arg);
+	pthread_attr_destroy(&attr);
+}
+
 Napi::Number HotKeys::start(const Napi::CallbackInfo& info)
 {
 	if (info.Length() > 0 && info[0].IsBoolean()) {
 		verboseMode = info[0].As<Napi::Boolean>();
 		if (verboseMode) {
-			fprintf(stderr, "(DHK): Starting module, verbose logging is on");
+			logger_proc(LOG_LEVEL_DEBUG, "(DHK): Starting module, verbose logging is on");
 		}
 	}
-	int status = installHookProc();
+	runStartStopThread(true);
 	Napi::Env env = info.Env();
-	return Napi::Number::New(env, status == 0 ? 1 : 0);
+	return Napi::Number::New(env, 1);
 }
 
 Napi::Number HotKeys::restart(const Napi::CallbackInfo& info)
 {
-    hook_restart();
+    runStartStopThread(false);
+    usleep(1000);
+    runStartStopThread(true);
     Napi::Env env = info.Env();
     return Napi::Number::New(env, 1);
 }
@@ -510,47 +548,15 @@ Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
 		int status = hook_stop();
 		switch (status) {
 			case UIOHOOK_SUCCESS:
-				// Everything is ok.
 				break;
-
-				// System level errors.
 			case UIOHOOK_ERROR_OUT_OF_MEMORY:
 				logger_proc(LOG_LEVEL_ERROR, "(DHK): Failed to allocate memory. (%#X)", status);
 				break;
-
-			case UIOHOOK_ERROR_X_RECORD_GET_CONTEXT:
-				// NOTE This is the only platform specific error that occurs on hook_stop().
-				logger_proc(LOG_LEVEL_ERROR, "(DHK): Failed to get XRecord context. (%#X)", status);
-				break;
-
-				// Default error.
 			case UIOHOOK_FAILURE:
 			default:
 				logger_proc(LOG_LEVEL_ERROR, "(DHK): An unknown hook error occurred. (%#X)", status);
 				break;
 		}
-
-		// We no longer block, so we need to explicitly wait for the thread to die.
-#ifdef _WIN32
-		WaitForSingleObject(hook_thread, INFINITE);
-#else
-#if defined(__APPLE__) && defined(__MACH__)
-// NOTE Darwin requires that you start your own runloop from main.
-// CFRunLoopRun();
-#endif
-
-// *** pthread_join(hook_thread, NULL);
-#endif
-#ifdef _WIN32
-// Create event handles for the thread hook.
-		CloseHandle(hook_thread);
-		DeleteCriticalSection(&hook_running_mutex);
-		DeleteCriticalSection(&hook_control_mutex);
-#else
-//pthread_mutex_destroy(&hook_running_mutex);
-//pthread_mutex_destroy(&hook_control_mutex);
-//pthread_cond_destroy(&hook_control_cond);
-#endif
 	}
 	hookInstalled = false;
 	if (externalLoggerSet) {
@@ -561,7 +567,7 @@ Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
 	return Napi::Number::New(env, 1);
 }
 
-Napi::Number setLoggerCb(const Napi::CallbackInfo& info)
+Napi::Number HotKeys::setLoggerCb(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
 	Napi::Function fnLogger;
