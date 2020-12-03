@@ -16,6 +16,7 @@
 
 static bool hookInstalled = false;
 static bool verboseMode = false;
+static bool stopOnEscape = false;
 static unsigned nextHotkeyId = 1;
 
 static bool externalLoggerSet = false;
@@ -249,6 +250,21 @@ void dispatch_proc(uiohook_event * const event)
 			break;
 
 		case EVENT_KEY_PRESSED:
+		    if (stopOnEscape) {
+		        if (event->data.keyboard.keycode == VC_ESCAPE) {
+		            stopOnEscape = false;
+                    int status = hook_stop();
+                    switch (status) {
+                        case UIOHOOK_SUCCESS:
+                            // Everything is ok.
+                            break;
+                        case UIOHOOK_FAILURE:
+                        default:
+                            logger_proc(LOG_LEVEL_ERROR, "An unknown hook error occurred. (%#X)", status);
+                            break;
+                    }
+                }
+            }
 		case EVENT_KEY_RELEASED:
 			hotKeyStore.onKeyEvent(event->data.keyboard.keycode, event->type == EVENT_KEY_PRESSED);
 			keyCollection.onKeyEvent(event->data.keyboard.keycode, event->type == EVENT_KEY_PRESSED);
@@ -437,6 +453,7 @@ int hook_enable()
 int installHookProc()
 {
 	int status = UIOHOOK_SUCCESS;
+	logger_proc(LOG_LEVEL_DEBUG, "(DHK): installHookProc called, hookInstalled=%s\r\n", hookInstalled ? "true" : "false" );
 	if (!hookInstalled) {
 		// Start the hook and block.
 		// NOTE If EVENT_HOOK_ENABLED was delivered, the status will always succeed.
@@ -497,16 +514,27 @@ static void* serviceHookThread(void* arg)
     if (startHook) {
         installHookProc();
     } else {
-        hookInstalled = false;
-        hook_stop();
-        logger_proc(LOG_LEVEL_DEBUG, "\r\n(DHK) hook_stop called\r\n");
-        int *hook_thread_status = (int*)malloc(sizeof(int));
-        pthread_join(hook_thread, (void **)&hook_thread_status);
-        free(hook_thread_status);
-		//int unlocked = pthread_mutex_unlock(&hook_running_mutex);
-        logger_proc(LOG_LEVEL_DEBUG, "(DHK): %s [%u]: hook stopped\n",__FUNCTION__, __LINE__);
+        logger_proc(LOG_LEVEL_DEBUG, "(DHK): serviceHookThread(stop) called, hookInstalled=%s\r\n", hookInstalled ? "true" : "false" );
+        if(false && hookInstalled) {
+            stopOnEscape = true;
+            uiohook_event *event = (uiohook_event *) malloc(sizeof(uiohook_event));
+
+            event->type = EVENT_KEY_PRESSED;
+            event->mask = 0x00;
+
+            event->data.keyboard.keycode = VC_ESCAPE;
+            event->data.keyboard.keychar = CHAR_UNDEFINED;
+
+            hook_post_event(event);
+
+            event->type = EVENT_KEY_RELEASED;
+
+            hook_post_event(event);
+
+            free(event);
+        }
     }
-	return arg;
+    return nullptr;
 }
 
 void runStartStopThread(bool startHook)
