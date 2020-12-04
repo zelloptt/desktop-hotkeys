@@ -33,6 +33,17 @@ Napi::Number HotKeys::setLoggerCb(const Napi::CallbackInfo& info)
 	return emptyImpl<Napi::Number, double>(info, -1);
 }
 
+Napi::Boolean HotKeys::collectPressedKeyCodes(const Napi::CallbackInfo& info)
+{
+	return emptyImpl<Napi::Boolean, bool>(info, false);
+}
+
+Napi::Array HotKeys::pressedKeyCodes(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+	return Napi::Array::New(env, 0);
+}
+
 Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 {
 	return emptyImpl<Napi::Number, double>(info, -1);
