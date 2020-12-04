@@ -9,6 +9,7 @@
       		["OS=='mac'", {
       		    "sources": [
 	                "src/HotkeysMacEmptyImpl.mm",
+	                "src/AddonMac.mm",
       		        "src/main.cpp"
       		    ],
                 'configurations': {
