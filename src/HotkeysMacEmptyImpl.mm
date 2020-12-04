@@ -4,7 +4,6 @@ template<typename T, typename TPrim>
 T emptyImpl(const Napi::CallbackInfo& info, TPrim defValue)
 {
 	Napi::Env env = info.Env();
-	Napi::TypeError::New(env, "procedure not implemented on linux").ThrowAsJavaScriptException();
 	return T::New(env, defValue);
 }
 
