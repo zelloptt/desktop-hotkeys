@@ -8,14 +8,9 @@
       	"conditions":[
       		["OS=='mac'", {
       		    "sources": [
-      		        "src/AddonMac.mm",
-      		        "src/AccessibilityMac.mm",
-      		        "src/HotkeysMac.mm",
+	                "src/HotkeysMacEmptyImpl.mm",
       		        "src/main.cpp"
       		    ],
-      		    'include_dirs': [
-                    "libuiohook/include"
-                ],
                 'configurations': {
                     'Debug': {
                        'xcode_settings': {
@@ -30,9 +25,6 @@
                         }
                     }
                 },
-                'dependencies': [
-                    "./uiohook.gyp:uiohook"
-                ],
                 "cflags+": ["-fvisibility=hidden"],
                 "xcode_settings": {
                 "GCC_SYMBOLS_PRIVATE_EXTERN": "YES"
