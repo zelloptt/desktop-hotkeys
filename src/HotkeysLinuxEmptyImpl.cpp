@@ -18,6 +18,21 @@ Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
 	return emptyImpl<Napi::Number, double>(info, -1);
 }
 
+Napi::Boolean HotKeys::started(const Napi::CallbackInfo& info)
+{
+	return emptyImpl<Napi::Boolean, bool>(info, false;
+}
+
+Napi::Number HotKeys::restart(const Napi::CallbackInfo& info)
+{
+    return emptyImpl<Napi::Number, double>(info, -1);
+}
+
+Napi::Number HotKeys::setLoggerCb(const Napi::CallbackInfo& info)
+{
+	return emptyImpl<Napi::Number, double>(info, -1);
+}
+
 Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 {
 	return emptyImpl<Napi::Number, double>(info, -1);

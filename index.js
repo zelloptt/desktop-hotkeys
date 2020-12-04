@@ -14,6 +14,10 @@ class ShortcutHelper {
 		return this.impl.stop();
 	}
 
+	started() {
+		return this.impl.started();
+	}
+
 	reload() {
 		this.impl.unregisterAllShortcuts();
 		if (process.platform === 'darwin') {

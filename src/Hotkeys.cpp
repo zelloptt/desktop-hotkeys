@@ -34,6 +34,24 @@ Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
 	return Napi::Number::New(env, uRetVal);
 }
 
+Napi::Boolean HotKeys::started(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+	return Napi::Boolean::New(info, g_pHotKeyManager != NULL);
+}
+
+Napi::Number HotKeys::restart(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+	return Napi::Number::New(info, 0);
+}
+
+Napi::Number HotKeys::setLoggerCb(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+	return Napi::Number::New(info, 0);
+}
+
 Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();

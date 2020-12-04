@@ -570,6 +570,12 @@ Napi::Number HotKeys::restart(const Napi::CallbackInfo& info)
     return Napi::Number::New(env, 1);
 }
 
+Napi::Boolean HotKeys::started(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    return Napi::Boolean::New(env, hookInstalled);
+}
+
 Napi::Number HotKeys::stop(const Napi::CallbackInfo& info)
 {
 	if (hookInstalled) {
