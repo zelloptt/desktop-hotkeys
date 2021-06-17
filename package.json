@@ -38,16 +38,16 @@
   },
   "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
   "devDependencies": {
-    "aws-sdk": "^2.773.0",
-    "np": "6.5.0"
+    "aws-sdk": "2.930.0",
+    "np": "7.5.0"
   },
   "np": {
     "yarn": false,
     "anyBranch": true
   },
   "dependencies": {
-    "node-addon-api": "3.0.2",
-    "node-gyp": "7.1.2",
-    "node-pre-gyp": "^0.15.0"
+    "node-addon-api": "4.0.0",
+    "node-gyp": "8.1.0",
+    "node-pre-gyp": "0.17.0"
   }
 }
