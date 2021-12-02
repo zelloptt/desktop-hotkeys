@@ -1,6 +1,6 @@
 class ShortcutHelper {
 	constructor() {
-		const binary = require('node-pre-gyp');
+		const binary = require('@mapbox/node-pre-gyp');
 		const path = require('path');
 		const binding_path = binary.find(path.resolve(path.join(__dirname, './package.json')));
 		this.impl = require(binding_path);

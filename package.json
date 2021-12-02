@@ -1,6 +1,6 @@
 {
   "name": "desktop-hotkeys",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "description": "This package provides press/release callbacks for system-wide hotkeys on Windows and Mac",
   "main": "index.js",
   "gypfile": true,
@@ -38,7 +38,7 @@
   },
   "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
   "devDependencies": {
-    "aws-sdk": "2.930.0",
+    "aws-sdk": "2.1011.0",
     "np": "7.5.0"
   },
   "np": {
@@ -46,8 +46,8 @@
     "anyBranch": true
   },
   "dependencies": {
-    "node-addon-api": "4.0.0",
-    "node-gyp": "8.1.0",
-    "node-pre-gyp": "0.17.0"
+    "@mapbox/node-pre-gyp": "1.0.5",
+    "node-addon-api": "4.2.0",
+    "node-gyp": "8.3.0"
   }
 }

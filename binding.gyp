@@ -8,7 +8,8 @@
       	"conditions":[
       		["OS=='mac'", {
       		    "sources": [
-	                "src/HotkeysMacEmptyImpl.mm",
+	                "src/HotkeysMac.mm",
+	                "src/AccessibilityMac.mm",
 	                "src/AddonMac.mm",
       		        "src/main.cpp"
       		    ],
@@ -26,6 +27,9 @@
                         }
                     }
                 },
+                'dependencies': [
+                    "./uiohook.gyp:uiohook"
+                ],
                 "cflags+": ["-fvisibility=hidden"],
                 "xcode_settings": {
                 "GCC_SYMBOLS_PRIVATE_EXTERN": "YES"

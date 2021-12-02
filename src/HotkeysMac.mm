@@ -4,7 +4,7 @@
 #import <ApplicationServices/ApplicationServices.h>
 #import <AppKit/AppKit.h>
 
-#include <uiohook.h>
+#include "../libuiohook/include/uiohook.h"
 #include <wchar.h>
 #include <map>
 #include <set>
