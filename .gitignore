@@ -8,5 +8,5 @@
 /build-tmp-napi-v5
 /build-tmp-napi-v6
 /lib
-/prebuilds/*.gz
+/prebuilds
 /.idea
