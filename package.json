@@ -5,9 +5,10 @@
   "main": "index.js",
   "gypfile": true,
   "scripts": {
-    "install": "node-pre-gyp install --fallback-to-build --debug",
+    "install": "node-pre-gyp install --fallback-to-build",
     "make": "node-pre-gyp rebuild --build-from-source package publish",
     "make32": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=ia32 package publish",
+    "makeM1": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=arm64 package publish",
     "maked": "node-pre-gyp rebuild --build-from-source --debug --verbose package publish",
     "test": "echo \"Test not applicable\""
   },
