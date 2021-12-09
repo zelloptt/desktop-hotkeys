@@ -9,3 +9,4 @@
 /build-tmp-napi-v6
 /lib
 /prebuilds/*.gz
+/.idea
