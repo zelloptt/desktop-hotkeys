@@ -33,7 +33,10 @@
                 "cflags+": ["-fvisibility=hidden"],
                 "xcode_settings": {
                 "GCC_SYMBOLS_PRIVATE_EXTERN": "YES"
-                }
+                },
+                "libraries": [
+                             	'-framework AppKit',
+                ]
       		}],
         	["OS=='win'", {
       	  		"sources": [
