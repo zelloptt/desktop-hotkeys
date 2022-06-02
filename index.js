@@ -85,6 +85,10 @@ class ShortcutHelper {
 		}
 		return true;
 	}
+
+	changeState(disable) {
+		this.impl.changeState(disable);
+	}
 }
 
 var shortcutHelper = new ShortcutHelper();
