@@ -40,15 +40,15 @@
   "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
   "devDependencies": {
     "aws-sdk": "2.1011.0",
-    "np": "7.5.0"
+    "np": "7.6.1"
   },
   "np": {
     "yarn": false,
     "anyBranch": true
   },
   "dependencies": {
-    "@mapbox/node-pre-gyp": "1.0.5",
+    "@mapbox/node-pre-gyp": "1.0.9",
     "node-addon-api": "4.2.0",
-    "node-gyp": "8.3.0"
+    "node-gyp": "9.0.0"
   }
 }
