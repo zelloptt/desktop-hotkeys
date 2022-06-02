@@ -10,7 +10,7 @@
     "demo"
   ],
   "dependencies": {
-    "desktop-hotkeys": "1.5.5"
+    "desktop-hotkeys": "file:../../desktop-hotkeys"
   },
   "author": "Zello Inc",
   "license": "ISC"

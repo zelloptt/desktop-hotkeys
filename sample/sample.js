@@ -50,3 +50,12 @@ try {
 	console.log('exception ' + ex);
 }
 console.log('waiting for hotkeys...');
+setTimeout(() => {
+	console.log("Disable hotkeys.");
+	dh.changeState(true);
+	setTimeout(() => {
+		console.log("Enable hotkeys back");
+		dh.changeState(false);
+
+	}, "10000");
+}, "10000");
