@@ -124,6 +124,7 @@ DWORD HotKeyManager::unregisterShortcut(DWORD dwId)
 		SendMessage(_hWnd, WM_UNREGISTER_HOTKEY, dwId, 0);
 		_hotkeys.erase(it);
 		_hotkeyIds.erase(dwId);
+		dwRet = 1;
 	}
 	return dwRet;
 }

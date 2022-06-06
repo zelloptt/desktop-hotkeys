@@ -69,7 +69,12 @@ class HotKeyStore
 {
 	typedef std::map<unsigned, std::unique_ptr<HotKey>> TCONT;
 	TCONT _hotkeys;
+	bool _disabled;
 public:
+    HotKeyStore() : _disabled(false)
+    {
+    }
+
 	unsigned create(const Napi::ThreadSafeFunction& pressed, const Napi::ThreadSafeFunction& released, unsigned* keyCodes, unsigned keyCount)
 	{
 		unsigned id = ++nextHotkeyId;
@@ -79,8 +84,7 @@ public:
 
 	unsigned remove(unsigned id)
 	{
-		_hotkeys.erase(id);
-		return 0;
+		return _hotkeys.erase(id);
 	}
 
 	unsigned removeAll()
@@ -91,9 +95,17 @@ public:
 
 	void onKeyEvent(unsigned keyCode, bool pressed)
 	{
+	    if (_disabled) {
+	        return;
+	    }
 		for (TCONT::const_iterator cit = _hotkeys.begin(); cit != _hotkeys.end(); ++cit) {
 			cit->second->onKeyEvent(keyCode, pressed);
 		}
+	}
+
+	void changeState(bool disabled)
+	{
+	    _disabled = disabled;
 	}
 } hotKeyStore;
 
@@ -185,7 +197,7 @@ bool logger_proc(unsigned int level, const char *format, ...)
         	g_fnLogFunction.BlockingCall(buf, callback);
         	g_fnLogFunction.Release();
 		} else {
-		    fprintf(stderr, "%s", buf);
+		    fprintf(stderr, "%s\n", buf);
 		    delete[] buf;
 		}
 	}
@@ -200,6 +212,7 @@ bool logger_proc(unsigned int level, const char *format, ...)
 // do so by copying the event to your own queued dispatch thread.
 void dispatch_proc(uiohook_event * const event)
 {
+    logger_proc(LOG_LEVEL_DEBUG, "dispatch_proc received evt %X", event->type);
 
 	switch (event->type) {
 		case EVENT_HOOK_ENABLED:
@@ -227,7 +240,7 @@ void dispatch_proc(uiohook_event * const event)
 			break;
 
 		case EVENT_HOOK_DISABLED:
-			logger_proc(LOG_LEVEL_DEBUG, "(DHK): EVENT_HOOK_ENABLED received");
+			logger_proc(LOG_LEVEL_DEBUG, "(DHK): EVENT_HOOK_DISABLED received");
 			// Lock the control mutex until we exit.
 #ifdef _WIN32
 			EnterCriticalSection(&hook_control_mutex);
@@ -309,6 +322,7 @@ void *hook_thread_proc(void *arg)
 #ifdef _WIN32
 		*(DWORD *)arg = status;
 #else
+    	logger_proc(LOG_LEVEL_DEBUG, "(DHK): hook_run returned %X\r\n", status);
 		*(int *)arg = status;
 #endif
 	}
@@ -325,7 +339,7 @@ void *hook_thread_proc(void *arg)
 // the waiting hook_enable().
 	pthread_cond_signal(&hook_control_cond);
 	pthread_mutex_unlock(&hook_control_mutex);
-
+    logger_proc(LOG_LEVEL_DEBUG, "(DHK): exiting hook_thread_proc");
 	return arg;
 #endif
 }
@@ -465,8 +479,8 @@ int installHookProc()
 				hookInstalled = true;
 				CFRunLoopRun();
 		        logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** returned from CFRunLoopRun\r\n");
-				pthread_join(hook_thread, NULL);
-		        logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** pthread_join(hook_thread) has finished\r\n");
+				// pthread_join(hook_thread, NULL);
+		        // logger_proc(LOG_LEVEL_DEBUG, "(DHK): *** pthread_join(hook_thread) has finished\r\n");
 				break;
 
 				// System level errors.
@@ -509,10 +523,11 @@ static void* serviceHookThread(void* arg)
 {
     int* p = reinterpret_cast<int*>(arg);
     bool startHook = (*p == 0 ? false : true);
-    delete p;
     logger_proc(LOG_LEVEL_DEBUG, "\r\n(DHK) serviceHookThread:%s\r\n", (startHook ? "<start>" : "<stop>"));
     if (startHook) {
-        installHookProc();
+        int status = installHookProc();
+        logger_proc(LOG_LEVEL_DEBUG, "\r\n(DHK) installHookProc returned %X\r\n", status);
+        *p = status;
     } else {
         logger_proc(LOG_LEVEL_DEBUG, "(DHK): serviceHookThread(stop) called, hookInstalled=%s\r\n", hookInstalled ? "true" : "false" );
         if(false && hookInstalled) {
@@ -533,19 +548,23 @@ static void* serviceHookThread(void* arg)
 
             free(event);
         }
+        *p = 0;
     }
     return nullptr;
 }
 
-void runStartStopThread(bool startHook)
+int runStartStopThread(bool startHook)
 {
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	pthread_t threadCb;
-	int* arg = new int;
-	*arg = startHook ? 1 : 0;
-	pthread_create(&threadCb, &attr, serviceHookThread, arg);
+	int arg = startHook ? 1 : 0;
+	pthread_create(&threadCb, &attr, serviceHookThread, &arg);
+	logger_proc(LOG_LEVEL_DEBUG, "\r\n(runStartStopThread) waiting for start status\r\n");
+	pthread_join(threadCb, nullptr);
+	logger_proc(LOG_LEVEL_DEBUG, "\r\n(runStartStopThread) start status %X\r\n", arg);
 	pthread_attr_destroy(&attr);
+	return arg;
 }
 
 Napi::Number HotKeys::start(const Napi::CallbackInfo& info)
@@ -556,9 +575,9 @@ Napi::Number HotKeys::start(const Napi::CallbackInfo& info)
 			logger_proc(LOG_LEVEL_DEBUG, "(DHK): Starting module, verbose logging is on");
 		}
 	}
-	runStartStopThread(true);
+	int nError = runStartStopThread(true);
 	Napi::Env env = info.Env();
-	return Napi::Number::New(env, 1);
+	return Napi::Number::New(env, nError == UIOHOOK_SUCCESS ? 1 : 0);
 }
 
 Napi::Number HotKeys::restart(const Napi::CallbackInfo& info)
@@ -680,13 +699,14 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 
 Napi::Number HotKeys::unregisterShortcut(const Napi::CallbackInfo& info)
 {
+    unsigned uRemovedCnt = 0;
 	Napi::Env env = info.Env();
 	if (info.Length() < 1 || !info[0].IsNumber()) {
 		Napi::TypeError::New(env, "Invalid argument: Hotkey id expected").ThrowAsJavaScriptException();
 	} else {
-		hotKeyStore.remove(info[0].As<Napi::Number>().Uint32Value());
+		uRemovedCnt = hotKeyStore.remove(info[0].As<Napi::Number>().Uint32Value());
 	}
-	return Napi::Number::New(env, 0);
+	return Napi::Number::New(env, uRemovedCnt);
 }
 
 Napi::Number HotKeys::unregisterAllShortcuts(const Napi::CallbackInfo& info)
@@ -717,4 +737,15 @@ Napi::Array HotKeys::pressedKeyCodes(const Napi::CallbackInfo& info)
 		arr[idx] = Napi::Number::New(env, keys[idx]);
 	}
 	return arr;
+}
+
+Napi::Number HotKeys::changeState(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+	if (info.Length() > 0 && info[0].IsBoolean()) {
+		bool bDisable = info[0].As<Napi::Boolean>();
+		logger_proc(LOG_LEVEL_DEBUG, "(DHK): Change state to %s", bDisable ? "disabled" : "enabled");
+	    hotKeyStore.changeState(bDisable);
+    }
+    return Napi::Number::New(env, 0);
 }
