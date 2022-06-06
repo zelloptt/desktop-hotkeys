@@ -9,7 +9,7 @@
     "make": "node-pre-gyp rebuild --build-from-source package publish",
     "make32": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=ia32 package publish",
     "makeM1": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=arm64 package publish",
-    "maked": "node-pre-gyp rebuild --build-from-source --debug --verbose package publish",
+    "maked": "node-pre-gyp rebuild --build-from-source --debug --verbose",
     "test": "echo \"Test not applicable\""
   },
   "license": "ISC",
@@ -34,21 +34,21 @@
     "host": "https://zello-desktop.s3.amazonaws.com",
     "package_name": "napi-v{napi_build_version}-{platform}-{arch}.tar.gz",
     "napi_versions": [
-      4
+      8
     ]
   },
   "homepage": "https://github.com/zelloptt/desktop-hotkeys#readme",
   "devDependencies": {
-    "aws-sdk": "2.1011.0",
-    "np": "7.5.0"
+    "aws-sdk": "2.1143.0",
+    "np": "7.6.1"
   },
   "np": {
     "yarn": false,
     "anyBranch": true
   },
   "dependencies": {
-    "@mapbox/node-pre-gyp": "1.0.5",
-    "node-addon-api": "4.2.0",
-    "node-gyp": "8.3.0"
+    "@mapbox/node-pre-gyp": "1.0.9",
+    "node-addon-api": "5.0.0",
+    "node-gyp": "9.0.0"
   }
 }

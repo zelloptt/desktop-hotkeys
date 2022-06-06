@@ -116,8 +116,8 @@ void runThread()
     }
 
     // Log the new and old accessibility trust functions to be sure they all return correct results.
-    NSLog(@"\n\tIn -didToggleAccessStatus: notification method (before values).\n\t\tAXIsProcessTrustedWithoutAlert: %@\n\t\tAXIsProcessTrusted: %@\n\t\tAXIsAccessEnabled (deprecated): %@", (granted) ? @"YES" : @"NO", (AXIsProcessTrusted()) ? @"YES" : @"NO", (AXAPIEnabled()) ? @"YES" : @"NO");
-    logger_proc(1, "\n\tIn -didToggleAccessStatus: notification method (before values).\n\t\tAXIsProcessTrustedWithoutAlert: %s\n\t\tAXIsProcessTrusted: %s\n\t\tAXIsAccessEnabled (deprecated): %s", (granted) ? "YES" : "NO", AXIsProcessTrusted() ? "YES" : "NO", AXAPIEnabled() ? "YES" : "NO");
+    NSLog(@"\n\tIn -didToggleAccessStatus: notification method (before values).\n\t\tAXIsProcessTrustedWithoutAlert: %@\n\t\tAXIsProcessTrusted: %@\n", (granted) ? @"YES" : @"NO", (AXIsProcessTrusted()) ? @"YES" : @"NO");
+    logger_proc(1, "\n\tIn -didToggleAccessStatus: notification method (before values).\n\t\tAXIsProcessTrustedWithoutAlert: %s\n\t\tAXIsProcessTrusted: %s\n", (granted) ? "YES" : "NO", AXIsProcessTrusted() ? "YES" : "NO");
 
     runThread();
     // Send -noteNewAccessibilityStatus: message, with the old access status saved in the accessStatus property, half a second after receipt of notification, to get "after" accessibility status. The delay is required in OS X 10.9.0 Mavericks because AXIsProcessTrustedWithOptions: and the other accessibility functions usually return the "before" value when the notification is posted. Experimentation indicates that a delay of as much as half a second after receipt of the notification is sometimes necessary to get the "after" value.
@@ -157,7 +157,7 @@ Napi::Number HotKeys::macSubscribeAccessibilityUpdates(const Napi::CallbackInfo&
 		CFSTR("com.apple.accessibility.api"),
 		nil,
 		CFNotificationSuspensionBehaviorDeliverImmediately);*/
-	return Napi::Number::New(env, AXAPIEnabled() ? 0 : -1);
+	return Napi::Number::New(env, AXIsProcessTrusted() ? 0 : -1);
 }
 
 Napi::Number HotKeys::macUnsubscribeAccessibilityUpdates(const Napi::CallbackInfo& info)

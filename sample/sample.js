@@ -38,7 +38,6 @@ try {
 		log.info('(PTT) Accessibility permission has changed to ' + granted);
 	});
 
-	dh.start(true);
 	hk1 = dh.registerShortcut([CTRL, ALT, F1], fnPressed, fnReleased, true);
 	console.log('registerShortcut returned ' + hk1);
 
