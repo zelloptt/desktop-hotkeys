@@ -185,6 +185,7 @@ bool logger_proc(unsigned int level, const char *format, ...)
 		vsprintf(buf, format, args);
 		va_end(args);
 		if (externalLoggerSet) {
+		    fprintf(stderr, "(DHK LOG)%s\n", buf);
 		    auto callback = []( Napi::Env env, Napi::Function jsCallback, char* pszText ) {
               // Transform native data into JS data, passing it to the provided
               // `jsCallback` -- the TSFN's JavaScript function.
@@ -216,16 +217,16 @@ void dispatch_proc(uiohook_event * const event)
 
 	switch (event->type) {
 		case EVENT_HOOK_ENABLED:
-			logger_proc(LOG_LEVEL_DEBUG, "(DHK): EVENT_HOOK_ENABLED received");
-			logger_proc(LOG_LEVEL_DEBUG, "***Lock the running mutex so we know if the hook is enabled");
+			logger_proc(LOG_LEVEL_DEBUG, "(DHK): EVENT_HOOK_ENABLED received\n");
+			logger_proc(LOG_LEVEL_DEBUG, "***Lock the running mutex so we know if the hook is enabled\n");
 			// Lock the running mutex so we know if the hook is enabled.
 #ifdef _WIN32
 			EnterCriticalSection(&hook_running_mutex);
 #else
 			pthread_mutex_lock(&hook_running_mutex);
 #endif
-			logger_proc(LOG_LEVEL_DEBUG, "(DHK): ***Lock the running mutex so we know if the hook is enabled - OK");
-			logger_proc(LOG_LEVEL_DEBUG, "(DHK): ***Unlock the control mutex so hook_enable() can continue");
+			logger_proc(LOG_LEVEL_DEBUG, "(DHK): ***Lock the running mutex so we know if the hook is enabled - OK\n");
+			logger_proc(LOG_LEVEL_DEBUG, "(DHK): ***Unlock the control mutex so hook_enable() can continue\n");
 
 			// Unlock the control mutex so hook_enable() can continue.
 #ifdef _WIN32
@@ -233,9 +234,9 @@ void dispatch_proc(uiohook_event * const event)
 			LeaveCriticalSection(&hook_control_mutex);
 #else
 			pthread_cond_signal(&hook_control_cond);
-			logger_proc(LOG_LEVEL_ERROR, "(DHK): ***Unlock the control mutex so hook_enable() can continue -- OK1");
+			logger_proc(LOG_LEVEL_ERROR, "(DHK): ***Unlock the control mutex so hook_enable() can continue -- OK1\n");
 			pthread_mutex_unlock(&hook_control_mutex);
-			logger_proc(LOG_LEVEL_ERROR, "(DHK): ***Unlock the control mutex so hook_enable() can continue -- OK2");
+			logger_proc(LOG_LEVEL_ERROR, "(DHK): ***Unlock the control mutex so hook_enable() can continue -- OK2\n");
 #endif
 			break;
 
