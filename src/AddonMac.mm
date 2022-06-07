@@ -6,7 +6,7 @@ Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 	exports.Set("stop", Napi::Function::New(env, HotKeys::stop));
 	exports.Set("restart", Napi::Function::New(env, HotKeys::restart));
 	exports.Set("started", Napi::Function::New(env, HotKeys::started));
-	exports.Set("changeState", Napi::Function::New(env, HotKeys::changeState));
+	exports.Set("setHotkeysEnabled", Napi::Function::New(env, HotKeys::setHotkeysEnabled));
 	exports.Set("setLoggerCb", Napi::Function::New(env, HotKeys::setLoggerCb));
 	exports.Set("collectPressedKeyCodes", Napi::Function::New(env, HotKeys::collectPressedKeyCodes));
 	exports.Set("pressedKeyCodes", Napi::Function::New(env, HotKeys::pressedKeyCodes));

@@ -63,6 +63,16 @@ public:
 			}
 		}
 	}
+
+	bool hasConflict(unsigned* keyCodes, unsigned keyCount) {
+		std::map<unsigned, bool>::iterator ce = _keyPressedState.end();
+		for (size_t idx = 0; idx < keyCount; ++idx) {
+    		if (ce == _keyPressedState.find(keyCodes[idx])) {
+    		    return false;
+    		}
+    	}
+    	return true;
+	}
 };
 
 class HotKeyStore
@@ -77,6 +87,11 @@ public:
 
 	unsigned create(const Napi::ThreadSafeFunction& pressed, const Napi::ThreadSafeFunction& released, unsigned* keyCodes, unsigned keyCount)
 	{
+	    for (TCONT::const_iterator cit = _hotkeys.begin(); cit != _hotkeys.end(); ++cit) {
+        	if (cit->second->hasConflict(keyCodes, keyCount)) {
+        	    return 0;
+        	}
+        }
 		unsigned id = ++nextHotkeyId;
 		_hotkeys[id] = std::unique_ptr<HotKey>(new HotKey(pressed, released, keyCodes, keyCount));
 		return id;
@@ -695,6 +710,9 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 		keyCodes,
 		arrKeys.Length()
 	);
+	if (keyId == 0) {
+	    logger_proc(LOG_LEVEL_ERROR, "(DHK): failed to create the new hotkey");
+	}
 	return Napi::Number::New(env, keyId);
 }
 
@@ -740,13 +758,13 @@ Napi::Array HotKeys::pressedKeyCodes(const Napi::CallbackInfo& info)
 	return arr;
 }
 
-Napi::Number HotKeys::changeState(const Napi::CallbackInfo& info)
+Napi::Number HotKeys::setHotkeysEnabled(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
 	if (info.Length() > 0 && info[0].IsBoolean()) {
-		bool bDisable = info[0].As<Napi::Boolean>();
+		bool bEnable = info[0].As<Napi::Boolean>();
 		logger_proc(LOG_LEVEL_DEBUG, "(DHK): Change state to %s", bDisable ? "disabled" : "enabled");
-	    hotKeyStore.changeState(bDisable);
+	    hotKeyStore.changeState(!bEnable);
     }
     return Napi::Number::New(env, 0);
 }

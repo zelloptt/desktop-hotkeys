@@ -58,7 +58,7 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 	Napi::Array arrKeys;
 	Napi::Function fnPressed;
 	Napi::Function fnReleased;
-	bool keysAreVirtualCodes = false;
+	bool keysAreVirtualCodes = true;
 	unsigned argCount = info.Length();
 	while (argCount > 0) {
 		if (info[argCount - 1].IsEmpty() || info[argCount - 1].IsUndefined() || info[argCount - 1].IsNull()) {
@@ -196,14 +196,14 @@ Napi::Boolean HotKeys::macCheckAccessibilityGranted(const Napi::CallbackInfo& in
 	return macAccessibilityUnavailable<Napi::Boolean, bool>(info, true);
 }
 
-Napi::Number HotKeys::changeState(const Napi::CallbackInfo& info)
+Napi::Number HotKeys::setHotkeysEnabled(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
 	if (info.Length() > 0 && info[0].IsBoolean()) {
-		bool bDisable = info[0].As<Napi::Boolean>();
-		log(bDisable ? "(DHK): disable hotkeys" : "(DHK): enable hotkeys");
+		bool bEnable = info[0].As<Napi::Boolean>();
+		log(bEnable ? "(DHK): Enable hotkeys" : "(DHK): Disable hotkeys");
 	    if (g_pHotKeyManager) {
-		    g_pHotKeyManager->DisableAllShortcuts(bDisable);
+		    g_pHotKeyManager->DisableAllShortcuts(!bEnable);
 	    }
     }
     return Napi::Number::New(env, 0);
@@ -215,7 +215,7 @@ Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 	exports.Set("stop", Napi::Function::New(env, HotKeys::stop));
 	exports.Set("started", Napi::Function::New(env, HotKeys::started));
 	exports.Set("restart", Napi::Function::New(env, HotKeys::restart));
-	exports.Set("changeState", Napi::Function::New(env, HotKeys::changeState));
+	exports.Set("setHotkeysEnabled", Napi::Function::New(env, HotKeys::setHotkeysEnabled));
 	exports.Set("registerShortcut", Napi::Function::New(env, HotKeys::registerShortcut));
 	exports.Set("unregisterShortcut", Napi::Function::New(env, HotKeys::unregisterShortcut));
 	exports.Set("unregisterAllShortcuts", Napi::Function::New(env, HotKeys::unregisterAllShortcuts));

@@ -1,5 +1,4 @@
 const dh = require('desktop-hotkeys');
-var hk1;
 
 function fnPressed() {
 	console.log('Hotkey pressed');
@@ -30,6 +29,7 @@ const ALT = isWindows ? 18 : 56;
 const F1 = isWindows ? 112 : 59;
 const F6 = F1 + 5;
 const F7 = F6 + 1;
+const useVKC = isWindows;
 try {
 	// dh.setLoggerCb(logCb);
 	dh.setupAccessibilityCallback(true, (granted) => {
@@ -38,23 +38,31 @@ try {
 		log.info('(PTT) Accessibility permission has changed to ' + granted);
 	});
 
-	hk1 = dh.registerShortcut([CTRL, ALT, F1], fnPressed, fnReleased, true);
+	const hk1 = dh.registerShortcut([CTRL, ALT, F1], fnPressed, fnReleased, useVKC);
 	console.log('registerShortcut returned ' + hk1);
 
-	const hk2 = dh.registerShortcut([CTRL, ALT, F7], fnPressed2, fnReleased2, true);
+	const hk2 = dh.registerShortcut([CTRL, ALT, F7], fnPressed2, fnReleased2, useVKC);
 	console.log('2nd registerShortcut returned ' + hk2);
 
-	dh.registerShortcut([CTRL, ALT, F6], fnPressed2)
+	const hk3 = dh.registerShortcut([CTRL, ALT, F6], fnPressed2);
+	console.log('3rd registerShortcut returned ' + hk3);
+
+	const hk4 = dh.registerShortcut([CTRL, ALT, F6], fnPressed2);
+	console.log('4th registerShortcut returned ' + hk4);
+
+	const hk5 = dh.registerShortcut([ALT, F6], fnPressed2);
+	console.log('5th registerShortcut returned ' + hk5);
+
 } catch (ex) {
 	console.log('exception ' + ex);
 }
 console.log('waiting for hotkeys...');
 setTimeout(() => {
 	console.log("Disable hotkeys.");
-	dh.changeState(true);
+	dh.setHotkeysEnabled(false);
 	setTimeout(() => {
 		console.log("Enable hotkeys back");
-		dh.changeState(false);
+		dh.setHotkeysEnabled(true);
 
 	}, "10000");
 }, "10000");

@@ -86,8 +86,8 @@ class ShortcutHelper {
 		return true;
 	}
 
-	changeState(disable) {
-		this.impl.changeState(disable);
+	setHotkeysEnabled(enable) {
+		this.impl.setHotkeysEnabled(enable);
 	}
 }
 
