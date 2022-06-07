@@ -763,7 +763,7 @@ Napi::Number HotKeys::setHotkeysEnabled(const Napi::CallbackInfo& info)
 	Napi::Env env = info.Env();
 	if (info.Length() > 0 && info[0].IsBoolean()) {
 		bool bEnable = info[0].As<Napi::Boolean>();
-		logger_proc(LOG_LEVEL_DEBUG, "(DHK): Change state to %s", bDisable ? "disabled" : "enabled");
+		logger_proc(LOG_LEVEL_DEBUG, "(DHK): Set hotkeys to ''%s'", bEnable ? "enabled" : "disabled");
 	    hotKeyStore.changeState(!bEnable);
     }
     return Napi::Number::New(env, 0);
