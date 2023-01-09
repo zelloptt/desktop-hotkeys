@@ -12,6 +12,8 @@ class HotKeyManager
 	HWND _hWnd;
 	typedef std::map<unsigned, std::pair<Napi::ThreadSafeFunction, Napi::ThreadSafeFunction>> TCONT;
 	TCONT _hotkeys;
+	std::map<unsigned, WPARAM> _hotkeyIds;
+	bool _DisabledState;
 public:
 	static unsigned __stdcall winThread(void* ptr);
 	HotKeyManager();
@@ -22,4 +24,5 @@ public:
 	DWORD registerShortcut(WORD wKeyCode, WORD wMod, const Napi::ThreadSafeFunction& tsfPress, const Napi::ThreadSafeFunction& tsfRelease);
 	DWORD unregisterShortcut(DWORD dwId);
 	DWORD unregisterAllShortcuts();
+	void DisableAllShortcuts(bool bDisable);
 };
