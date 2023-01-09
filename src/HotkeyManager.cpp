@@ -43,7 +43,7 @@ unsigned __stdcall HotKeyManager::winThread(void* ptr)
 	return 0;
 }
 
-HotKeyManager::HotKeyManager()
+HotKeyManager::HotKeyManager() : _DisabledState(false)
 {
 	_hStartEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	_hThread = reinterpret_cast<HANDLE>(_beginthreadex(NULL, 0, winThread, this, 0, &_uThreadId));
@@ -99,13 +99,14 @@ DWORD HotKeyManager::registerShortcut(WORD wKeyCode, WORD wMod, const Napi::Thre
 	}
 	WPARAM wParam = MAKEWPARAM(wKeyCode, wMod);
 	std::string s("DesktopHotkey#");
-	char buf[32] = { 0 };
+	char buf[32] = {0};
 	s.append(itoa(wParam, buf, 16));
 	ATOM atm = GlobalAddAtomA(s.c_str());
 	if (atm) {
 		_hotkeys[atm] = std::make_pair(tsfPress, tsfRelease);
 		if (0 != SendMessage(_hWnd, WM_REGISTER_HOTKEY, wParam, atm)) {
 			dwId = atm;
+			_hotkeyIds[atm] = wParam;
 		} else {
 			GlobalDeleteAtom(atm);
 		}
@@ -122,6 +123,8 @@ DWORD HotKeyManager::unregisterShortcut(DWORD dwId)
 		GlobalDeleteAtom(atm);
 		SendMessage(_hWnd, WM_UNREGISTER_HOTKEY, dwId, 0);
 		_hotkeys.erase(it);
+		_hotkeyIds.erase(dwId);
+		dwRet = 1;
 	}
 	return dwRet;
 }
@@ -132,6 +135,23 @@ DWORD HotKeyManager::unregisterAllShortcuts()
 		unregisterShortcut(_hotkeys.begin()->first);
 	}
 	return 0;
+}
+
+void HotKeyManager::DisableAllShortcuts(bool bDisable)
+{
+    if (_DisabledState == bDisable) {
+        log("(DHK): shortcuts already in %s state\r\n", bDisable ? "disabled" : "enabled");
+        return;
+    }
+    _DisabledState = bDisable;
+    for (std::map<unsigned, WPARAM>::const_iterator it = _hotkeyIds.begin(); it != _hotkeyIds.end(); it ++) {
+        DWORD dwId = it->first;
+        if (bDisable) {
+            SendMessage(_hWnd, WM_UNREGISTER_HOTKEY, dwId, 0);
+        } else {
+		    SendMessage(_hWnd, WM_REGISTER_HOTKEY, it->second, dwId);
+        }
+    }
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
