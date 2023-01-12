@@ -8,6 +8,7 @@
     "install": "node-pre-gyp install --fallback-to-build",
     "make": "node-pre-gyp rebuild --build-from-source package publish",
     "make32": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=ia32 package publish",
+    "make64": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=x64 package publish",
     "makeM1": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=arm64 package publish",
     "maked": "node-pre-gyp rebuild --build-from-source --debug --verbose",
     "test": "echo \"Test not applicable\""
