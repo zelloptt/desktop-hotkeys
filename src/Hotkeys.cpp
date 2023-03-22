@@ -9,6 +9,52 @@ extern bool g_bVerboseMode;
 
 bool log(const char* format, ...);
 
+bool combineKeyCodes(const api::Array& arrKeys, bool keysAreVirtualCodes, WORD& wKeyCode, WORD& wMod)
+{
+	wKeyCode = wMod = 0;
+	for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
+		Napi::Value v = arrKeys[idx];
+		DWORD dwCode = v.As<Napi::Number>().Uint32Value();
+		DWORD dw = keysAreVirtualCodes ? dwCode : MapVirtualKey(dwCode, MAPVK_VSC_TO_VK);
+		switch (dw) {
+			case 0:
+			{
+				char szErrBuf[64];
+				if (keysAreVirtualCodes) {
+					sprintf(szErrBuf, "invalid arguments: virtual key code cannot be 0");
+				} else {
+					sprintf(szErrBuf, "Can't convert scancode %d(%X) to VKCode", dwCode, dwCode);
+				}
+				log(szErrBuf);
+				return false;
+			}
+			break;
+			case VK_CONTROL:
+			case VK_LCONTROL:
+			case VK_RCONTROL:
+				wMod = wMod | MOD_CONTROL;
+				break;
+			case VK_SHIFT:
+			case VK_LSHIFT:
+			case VK_RSHIFT:
+				wMod = wMod | MOD_SHIFT;
+				break;
+			case VK_MENU:
+			case VK_LMENU:
+			case VK_RMENU:
+				wMod = wMod | MOD_ALT;
+				break;
+			case VK_LWIN:
+			case VK_RWIN:
+				wMod = wMod | MOD_WIN;
+				break;
+			default:
+				wKeyCode = static_cast<WORD>(dw);
+		}
+	}
+	return true;
+}
+
 Napi::Number HotKeys::start(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
@@ -208,6 +254,57 @@ Napi::Number HotKeys::setHotkeysEnabled(const Napi::CallbackInfo& info)
     }
     return Napi::Number::New(env, 0);
 }
+
+Napi::Number HotKeys::checkHotkeyConflicts(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+	Napi::Array arrKeys;
+	bool keysAreVirtualCodes = true;
+	unsigned argCount = info.Length();
+	while (argCount > 0) {
+		if (info[argCount - 1].IsEmpty() || info[argCount - 1].IsUndefined() || info[argCount - 1].IsNull()) {
+			argCount = argCount - 1;
+		} else {
+			break;
+		}
+	}
+
+	if (argCount > 0 && info[0].IsArray()) && info[1].IsBoolean() && info[2].IsFunction()) {
+		arrKeys = info[0].As<Napi::Array>();
+		if (argCount > 1 && info[1].IsBoolean()) {
+			keysAreVirtualCodes = info[1].As<Napi::Boolean>();
+		}
+	} else {
+		log("(DHK): invalid registerShortcut arguments: Array/Function/Function or Array/Function expected");
+		Napi::TypeError::New(env, "invalid registerShortcut arguments: Array/Function/Function or Array/Function expected").ThrowAsJavaScriptException();
+		return Napi::Number::New(env, 0);
+	}
+
+    WORD wKeyCode = 0, wMod = 0;
+    combineKeyCodes(arrKeys, keysAreVirtualCodes, wKeyCode, wMod);
+    if (g_pHotKeyManager && g_pHotKeyManager->Valid()) {
+        bool bConflict = g_pHotKeyManager->checkShortcut(wKeyCode, wMod);
+	    DWORD dwIdHotKeyManager::registerShortcut(WORD wKeyCode, WORD wMod, const Napi::ThreadSafeFunction& tsfPress, const Napi::ThreadSafeFunction& tsfRelease)
+}
+
+	unsigned hasConflict(const std::vector<unsigned>& keyCodes) {
+		std::map<unsigned, bool>::iterator ce = _keyPressedState.end();
+		const size_t keyCount = keyCodes.size();
+		size_t equalKeysCount = 0;
+		for (size_t idx = 0; idx < keyCount; ++idx) {
+    		if (ce != _keyPressedState.find(keyCodes[idx])) {
+    		    ++equalKeysCount;
+    		}
+    	}
+    	if (equalKeysCount == keyCount) {
+    	    // all new keys already in use here
+    	    return keyCount == _keyPressedState.size() ? 2 : 1;
+    	} else if (equalKeysCount == _keyPressedState.size()) {
+    	    // all my key will be used as a new hotkey
+    	    return 1;
+    	}
+    	return 0;
+	}
 
 Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 {

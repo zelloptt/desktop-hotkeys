@@ -10,6 +10,7 @@
     "make32": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=ia32 package publish",
     "make64": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=x64 package publish",
     "makeM1": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=arm64 package publish",
+    "makeM11": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=arm64",
     "maked": "node-pre-gyp rebuild --build-from-source --debug --verbose",
     "test": "echo \"Test not applicable\""
   },
@@ -49,7 +50,7 @@
   },
   "dependencies": {
     "@mapbox/node-pre-gyp": "1.0.10",
-    "node-addon-api": "5.0.0",
+    "node-addon-api": "6.0.0",
     "node-gyp": "9.3.1"
   }
 }

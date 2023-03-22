@@ -57,7 +57,7 @@ try {
 	console.log('exception ' + ex);
 }
 console.log('waiting for hotkeys...');
-setTimeout(() => {
+/*setTimeout(() => {
 	console.log("Disable hotkeys.");
 	dh.setHotkeysEnabled(false);
 	setTimeout(() => {
@@ -65,4 +65,4 @@ setTimeout(() => {
 		dh.setHotkeysEnabled(true);
 
 	}, "10000");
-}, "10000");
+}, "10000");*/

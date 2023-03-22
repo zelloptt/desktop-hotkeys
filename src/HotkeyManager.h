@@ -21,8 +21,10 @@ public:
 	bool Valid() const;
 	void NotifyHotKeyEvent(unsigned uCode, bool bPressed);
 	void UpdateCallbacks(unsigned uCode, bool bSetInUse);
+	DWORD checkShortcut(WORD wKeyCode, WORD wMod);
 	DWORD registerShortcut(WORD wKeyCode, WORD wMod, const Napi::ThreadSafeFunction& tsfPress, const Napi::ThreadSafeFunction& tsfRelease);
 	DWORD unregisterShortcut(DWORD dwId);
 	DWORD unregisterAllShortcuts();
 	void DisableAllShortcuts(bool bDisable);
+	static std::string GenerateAtomName(WPARAM wKeys);
 };

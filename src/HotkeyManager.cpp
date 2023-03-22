@@ -91,6 +91,38 @@ void HotKeyManager::UpdateCallbacks(unsigned uCode, bool bSetInUse)
 	}
 }
 
+std::string HotKeyManager::GenerateAtomName(WPARAM wKeys)
+{
+	std::string sAtomName("DesktopHotkey#");
+	char buf[32] = {0};
+	sAtomName.append(itoa(wParam, buf, 16));
+	return sAtomName;
+}
+
+bool HotKeyManager::checkShortcut(WORD wKeyCode, WORD wMod)
+{
+	if (!Valid()) {
+		return false; // unable to verify!
+	}
+    WPARAM wParam = MAKEWPARAM(wKeyCode, wMod);
+    std::string sName = HotKeyManager::GenerateAtomName(wParam);
+    ATOM atm = GlobalFindAtomA(sName.c_str());
+    if (atm != 0) {
+        return true; // conflict!
+    }
+    ATOM atm = GlobalAddAtomA(sName.c_str());
+    if (atm == 0) {
+        return true; // unable to generate unique key id
+    }
+    bool hotKeyRegistered = 0 != SendMessage(_hWnd, WM_REGISTER_HOTKEY, wParam, atm);
+    GlobalDeleteAtom(atm);
+    if (!hotKeyRegistered) {
+        return true;
+    }
+    SendMessage(_hWnd, WM_UNREGISTER_HOTKEY, atm, 0);
+    return false;
+}
+
 DWORD HotKeyManager::registerShortcut(WORD wKeyCode, WORD wMod, const Napi::ThreadSafeFunction& tsfPress, const Napi::ThreadSafeFunction& tsfRelease)
 {
 	DWORD dwId = 0;
@@ -98,10 +130,7 @@ DWORD HotKeyManager::registerShortcut(WORD wKeyCode, WORD wMod, const Napi::Thre
 		return 0;
 	}
 	WPARAM wParam = MAKEWPARAM(wKeyCode, wMod);
-	std::string s("DesktopHotkey#");
-	char buf[32] = {0};
-	s.append(itoa(wParam, buf, 16));
-	ATOM atm = GlobalAddAtomA(s.c_str());
+	ATOM atm = GlobalAddAtomA(HotKeyManager::GenerateAtomName(wParam).c_str());
 	if (atm) {
 		_hotkeys[atm] = std::make_pair(tsfPress, tsfRelease);
 		if (0 != SendMessage(_hWnd, WM_REGISTER_HOTKEY, wParam, atm)) {

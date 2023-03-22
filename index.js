@@ -1,5 +1,6 @@
 class ShortcutHelper {
 	constructor() {
+		console.log('\r\n(DHK) init ShortcutHelper');
 		const binary = require('@mapbox/node-pre-gyp');
 		const path = require('path');
 		const binding_path = binary.find(path.resolve(path.join(__dirname, './package.json')));
@@ -88,6 +89,14 @@ class ShortcutHelper {
 
 	setHotkeysEnabled(enable) {
 		this.impl.setHotkeysEnabled(enable);
+	}
+
+	convertHotkeysCodes(keyCodes, keysAreVKC) {
+		return this.impl.convertHotkeysCodes(keyCodes, keysAreVKC);
+	}
+
+	checkHotkeyConflicts(keyCodes) {
+		return this.impl.checkHotkeyConflicts(keyCodes);
 	}
 }
 
