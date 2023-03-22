@@ -95,32 +95,32 @@ std::string HotKeyManager::GenerateAtomName(WPARAM wKeys)
 {
 	std::string sAtomName("DesktopHotkey#");
 	char buf[32] = {0};
-	sAtomName.append(itoa(wParam, buf, 16));
+	sAtomName.append(itoa(wKeys, buf, 16));
 	return sAtomName;
 }
 
-bool HotKeyManager::checkShortcut(WORD wKeyCode, WORD wMod)
+DWORD HotKeyManager::checkShortcut(WORD wKeyCode, WORD wMod)
 {
 	if (!Valid()) {
-		return false; // unable to verify!
+		return 0; // unable to verify!
 	}
     WPARAM wParam = MAKEWPARAM(wKeyCode, wMod);
     std::string sName = HotKeyManager::GenerateAtomName(wParam);
     ATOM atm = GlobalFindAtomA(sName.c_str());
     if (atm != 0) {
-        return true; // conflict!
+        return 2; // conflict!
     }
-    ATOM atm = GlobalAddAtomA(sName.c_str());
+    atm = GlobalAddAtomA(sName.c_str());
     if (atm == 0) {
-        return true; // unable to generate unique key id
+        return 2; // unable to generate unique key id
     }
     bool hotKeyRegistered = 0 != SendMessage(_hWnd, WM_REGISTER_HOTKEY, wParam, atm);
     GlobalDeleteAtom(atm);
     if (!hotKeyRegistered) {
-        return true;
+        return 1;
     }
     SendMessage(_hWnd, WM_UNREGISTER_HOTKEY, atm, 0);
-    return false;
+    return 0;
 }
 
 DWORD HotKeyManager::registerShortcut(WORD wKeyCode, WORD wMod, const Napi::ThreadSafeFunction& tsfPress, const Napi::ThreadSafeFunction& tsfRelease)

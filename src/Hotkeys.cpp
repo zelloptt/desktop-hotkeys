@@ -9,7 +9,7 @@ extern bool g_bVerboseMode;
 
 bool log(const char* format, ...);
 
-bool combineKeyCodes(const api::Array& arrKeys, bool keysAreVirtualCodes, WORD& wKeyCode, WORD& wMod)
+bool combineKeyCodes(const Napi::Array& arrKeys, bool keysAreVirtualCodes, WORD& wKeyCode, WORD& wMod)
 {
 	wKeyCode = wMod = 0;
 	for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
@@ -259,6 +259,7 @@ Napi::Number HotKeys::checkHotkeyConflicts(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
 	Napi::Array arrKeys;
+	unsigned retValue = 0;
 	bool keysAreVirtualCodes = true;
 	unsigned argCount = info.Length();
 	while (argCount > 0) {
@@ -269,42 +270,24 @@ Napi::Number HotKeys::checkHotkeyConflicts(const Napi::CallbackInfo& info)
 		}
 	}
 
-	if (argCount > 0 && info[0].IsArray()) && info[1].IsBoolean() && info[2].IsFunction()) {
+	if (argCount > 0 && info[0].IsArray()) {
 		arrKeys = info[0].As<Napi::Array>();
 		if (argCount > 1 && info[1].IsBoolean()) {
 			keysAreVirtualCodes = info[1].As<Napi::Boolean>();
 		}
 	} else {
-		log("(DHK): invalid registerShortcut arguments: Array/Function/Function or Array/Function expected");
-		Napi::TypeError::New(env, "invalid registerShortcut arguments: Array/Function/Function or Array/Function expected").ThrowAsJavaScriptException();
-		return Napi::Number::New(env, 0);
+		log("(DHK): invalid checkHotkeyConflicts arguments: Array or Array+Boolean is expected");
+		Napi::TypeError::New(env, "invalid checkHotkeyConflicts arguments: Array or Array+Boolean is expected").ThrowAsJavaScriptException();
+		return Napi::Number::New(env, retValue);
 	}
 
     WORD wKeyCode = 0, wMod = 0;
     combineKeyCodes(arrKeys, keysAreVirtualCodes, wKeyCode, wMod);
     if (g_pHotKeyManager && g_pHotKeyManager->Valid()) {
-        bool bConflict = g_pHotKeyManager->checkShortcut(wKeyCode, wMod);
-	    DWORD dwIdHotKeyManager::registerShortcut(WORD wKeyCode, WORD wMod, const Napi::ThreadSafeFunction& tsfPress, const Napi::ThreadSafeFunction& tsfRelease)
+        retValue = g_pHotKeyManager->checkShortcut(wKeyCode, wMod);
+    }
+	return Napi::Number::New(env, retValue);
 }
-
-	unsigned hasConflict(const std::vector<unsigned>& keyCodes) {
-		std::map<unsigned, bool>::iterator ce = _keyPressedState.end();
-		const size_t keyCount = keyCodes.size();
-		size_t equalKeysCount = 0;
-		for (size_t idx = 0; idx < keyCount; ++idx) {
-    		if (ce != _keyPressedState.find(keyCodes[idx])) {
-    		    ++equalKeysCount;
-    		}
-    	}
-    	if (equalKeysCount == keyCount) {
-    	    // all new keys already in use here
-    	    return keyCount == _keyPressedState.size() ? 2 : 1;
-    	} else if (equalKeysCount == _keyPressedState.size()) {
-    	    // all my key will be used as a new hotkey
-    	    return 1;
-    	}
-    	return 0;
-	}
 
 Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 {
