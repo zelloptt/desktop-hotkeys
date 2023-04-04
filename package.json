@@ -1,6 +1,6 @@
 {
   "name": "desktop-hotkeys",
-  "version": "1.5.13",
+  "version": "1.0.2",
   "description": "This package provides press/release callbacks for system-wide hotkeys on Windows and Mac",
   "main": "index.js",
   "gypfile": true,

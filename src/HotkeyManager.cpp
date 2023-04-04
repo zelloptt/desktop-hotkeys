@@ -68,13 +68,18 @@ bool HotKeyManager::Valid() const
 	return _uThreadId != 0 && _hWnd != NULL;
 }
 
-void HotKeyManager::NotifyHotKeyEvent(unsigned uCode, bool bPressed)
+bool HotKeyManager::NotifyHotKeyEvent(unsigned uCode, bool bPressed)
 {
+    if (this->_DisabledState) {
+        return false;
+    }
 	TCONT::iterator cit = _hotkeys.find(uCode);
 	if (cit != _hotkeys.end()) {
 		Napi::ThreadSafeFunction& tsfn = bPressed ? cit->second.first : cit->second.second;
 		tsfn.NonBlockingCall();
+		return true;
 	}
+	return false;
 }
 
 void HotKeyManager::UpdateCallbacks(unsigned uCode, bool bSetInUse)
@@ -173,6 +178,7 @@ void HotKeyManager::DisableAllShortcuts(bool bDisable)
         return;
     }
     _DisabledState = bDisable;
+    /*
     for (std::map<unsigned, WPARAM>::const_iterator it = _hotkeyIds.begin(); it != _hotkeyIds.end(); it ++) {
         DWORD dwId = it->first;
         if (bDisable) {
@@ -181,6 +187,7 @@ void HotKeyManager::DisableAllShortcuts(bool bDisable)
 		    SendMessage(_hWnd, WM_REGISTER_HOTKEY, it->second, dwId);
         }
     }
+    */
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -227,9 +234,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			unsigned uKeyCode = wParam;
 			pushedKey = HIWORD(lParam);
 			pushedCode = wParam;
-			g_pHotKeyManager->NotifyHotKeyEvent(wParam, true);
-			timerId = SetTimer(hWnd, wParam, 100, NULL);
-			log("(DHK): new evt%d activated\r\n", timerId);
+			if (g_pHotKeyManager->NotifyHotKeyEvent(wParam, true)) {
+			    timerId = SetTimer(hWnd, wParam, 100, NULL);
+			    log("(DHK): new evt%d activated\r\n", timerId);
+			}
 			break;
 		}
 		case WM_TIMER:
