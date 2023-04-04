@@ -783,6 +783,8 @@ Napi::Number HotKeys::setHotkeysEnabled(const Napi::CallbackInfo& info)
     return Napi::Number::New(env, 0);
 }
 
+unsigned keycode_convert(unsigned code, bool toWinVK);
+
 Napi::Array HotKeys::convertHotkeysCodes(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
@@ -799,17 +801,11 @@ Napi::Array HotKeys::convertHotkeysCodes(const Napi::CallbackInfo& info)
    	    logger_proc(LOG_LEVEL_WARN, "(DHK): convertHotkeysCodes received empty array of keyCodes; early return");
    	    return Napi::Array::New(env, 0);
    	}
-   	std::vector<unsigned> keyCodes(arrKeys.Length());
+	Napi::Array arr = Napi::Array::New(env, arrKeys.Length());
     for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
     	Napi::Value key = arrKeys[idx];
-    	keyCodes[idx] = key.As<Napi::Number>().Uint32Value();
+    	arr[idx] = keycode_convert(key.As<Napi::Number>().Uint32Value(), true);
     }
-	std::vector<unsigned> keys;
-	keyCollection.get(std::back_inserter(keys));
-	Napi::Array arr = Napi::Array::New(env, keys.size());
-	for (size_t idx = 0; idx < keys.size(); ++idx) {
-		arr[idx] = Napi::Number::New(env, keys[idx]);
-	}
 	return arr;
 }
 

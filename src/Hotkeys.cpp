@@ -289,6 +289,32 @@ Napi::Number HotKeys::checkHotkeyConflicts(const Napi::CallbackInfo& info)
 	return Napi::Number::New(env, retValue);
 }
 
+unsigned keycode_convert(unsigned code, bool toWinVK);
+
+Napi::Array HotKeys::convertHotkeysCodes(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+   	unsigned argCount = info.Length();
+    Napi::Array arrKeys;
+   	if (argCount > 0 && info[0].IsArray()) {// not used in mac: info[1].IsBoolean()) {
+   		arrKeys = info[0].As<Napi::Array>();
+   	} else {
+   		log("(DHK): invalid convertHotkeysCodes arguments: expected array and boolean");
+   		Napi::TypeError::New(env, "invalid convertHotkeysCodes arguments: expected array and boolean").ThrowAsJavaScriptException();
+   		return Napi::Array::New(env, 0);
+   	}
+   	if (arrKeys.Length() == 0) {
+   	    log("(DHK): convertHotkeysCodes received empty array of keyCodes; early return");
+   	    return Napi::Array::New(env, 0);
+   	}
+    Napi::Array arr = Napi::Array::New(env, arrKeys.Length());
+    for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
+    	Napi::Value key = arrKeys[idx];
+    	arr[idx] = keycode_convert(key.As<Napi::Number>().Uint32Value(), false);
+    }
+	return arr;
+}
+
 Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 {
 	exports.Set("start", Napi::Function::New(env, HotKeys::start));
@@ -303,5 +329,7 @@ Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 	exports.Set("macShowAccessibilitySettings", Napi::Function::New(env, HotKeys::macShowAccessibilitySettings));
 	exports.Set("macSubscribeAccessibilityUpdates", Napi::Function::New(env, HotKeys::macSubscribeAccessibilityUpdates));
 	exports.Set("macUnsubscribeAccessibilityUpdates", Napi::Function::New(env, HotKeys::macUnsubscribeAccessibilityUpdates));
+	exports.Set("convertHotkeysCodes", Napi::Function::New(env, HotKeys::convertHotkeysCodes));
+	exports.Set("checkHotkeyConflicts", Napi::Function::New(env, HotKeys::checkHotkeyConflicts));
 	return exports;
 }
