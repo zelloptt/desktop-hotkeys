@@ -37,11 +37,12 @@ class HotKey
 	Napi::ThreadSafeFunction _pressedCb;
 	Napi::ThreadSafeFunction _releasedCb;
 	std::map<unsigned, bool> _keyPressedState;
+	const unsigned _id;
 	unsigned _keysPressed;
 	const unsigned _keysCount;
 public:
-	HotKey(Napi::ThreadSafeFunction pressedCb, Napi::ThreadSafeFunction releasedCb, const std::vector<unsigned>& keyCodes) :
-		_pressedCb(pressedCb), _releasedCb(releasedCb), _keysPressed(0), _keysCount(keyCodes.size())
+	HotKey(Napi::ThreadSafeFunction pressedCb, Napi::ThreadSafeFunction releasedCb, const std::vector<unsigned>& keyCodes, unsigned id) :
+		_pressedCb(pressedCb), _releasedCb(releasedCb), _id(id), _keysPressed(0), _keysCount(keyCodes.size())
 	{
 		for (size_t idx = 0; idx < _keysCount; ++idx) {
 			_keyPressedState[keyCodes[idx]] = false;
@@ -54,12 +55,19 @@ public:
 		if (cit != _keyPressedState.end()) {
 			if (cit->second != pressed) {
 				cit->second = pressed;
+				int* pid = new int;
+				*pid = static_cast<int>(_id);
+			    auto callback = []( Napi::Env env, Napi::Function jsCallback, int* pHotkeyId ) {
+                    jsCallback.Call( {Napi::Number::New(env, *pHotkeyId)} );
+                    delete pHotkeyId;
+                };
+
 				if (!pressed && _keysPressed == _keysCount) {
-					_releasedCb.NonBlockingCall();
+					_releasedCb.NonBlockingCall(pid, callback);
 				}
 				_keysPressed += (pressed ? 1 : -1);
 				if (pressed && _keysPressed == _keysCount) {
-					_pressedCb.NonBlockingCall();
+					_pressedCb.NonBlockingCall(pid, callback);
 				}
 			}
 		}
@@ -101,7 +109,7 @@ public:
        	    return 0;
         }
 		unsigned id = ++nextHotkeyId;
-		_hotkeys[id] = std::unique_ptr<HotKey>(new HotKey(pressed, released, keyCodes));
+		_hotkeys[id] = std::unique_ptr<HotKey>(new HotKey(pressed, released, keyCodes, id));
 		return id;
 	}
 
