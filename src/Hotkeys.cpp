@@ -296,8 +296,12 @@ Napi::Array HotKeys::convertHotkeysCodes(const Napi::CallbackInfo& info)
 	Napi::Env env = info.Env();
    	unsigned argCount = info.Length();
     Napi::Array arrKeys;
+    bool keysAreVirtualCodes = true;
    	if (argCount > 0 && info[0].IsArray()) {// not used in mac: info[1].IsBoolean()) {
    		arrKeys = info[0].As<Napi::Array>();
+		if (argCount > 1 && info[1].IsBoolean()) {
+			keysAreVirtualCodes = info[1].As<Napi::Boolean>();
+		}
    	} else {
    		log("(DHK): invalid convertHotkeysCodes arguments: expected array and boolean");
    		Napi::TypeError::New(env, "invalid convertHotkeysCodes arguments: expected array and boolean").ThrowAsJavaScriptException();
@@ -310,7 +314,7 @@ Napi::Array HotKeys::convertHotkeysCodes(const Napi::CallbackInfo& info)
     Napi::Array arr = Napi::Array::New(env, arrKeys.Length());
     for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
     	Napi::Value key = arrKeys[idx];
-    	arr[idx] = keycode_convert(key.As<Napi::Number>().Uint32Value(), false);
+    	arr[idx] = keycode_convert(key.As<Napi::Number>().Uint32Value(), !keysAreVirtualCodes);
     }
 	return arr;
 }

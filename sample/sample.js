@@ -16,7 +16,7 @@ function fnReleased2() {
 	console.log('Hotkey#2 released');
 }
 
-console.log("desktop-hotkeys module started: " + dh.start(true));
+console.log('desktop-hotkeys module started: ' + dh.start(true));
 
 function logCb(text) {
 	console.log('(PTT) Callback: ' + text);
@@ -31,11 +31,11 @@ const F6 = F1 + 5;
 const F7 = F6 + 1;
 const useVKC = isWindows;
 try {
-	// dh.setLoggerCb(logCb);
+	dh.setLoggerCb(logCb);
 	dh.setupAccessibilityCallback(true, (granted) => {
 		// it has been reported that actual permission status might be applied
 		// only after a short period of time
-		log.info('(PTT) Accessibility permission has changed to ' + granted);
+		console.log('(PTT) Accessibility permission has changed to ' + granted);
 	});
 
 	const hk1 = dh.registerShortcut([CTRL, ALT, F1], fnPressed, fnReleased, useVKC);
@@ -56,6 +56,14 @@ try {
 } catch (ex) {
 	console.log('exception ' + ex);
 }
+
+const keyCodes = [17, 18, 112];
+console.log('Test codes are: ' + keyCodes.toString());
+const macCodes = dh.convertHotkeysCodes(keyCodes, true);
+console.log('Mac codes are: ' + macCodes.toString());
+const winCodes = dh.convertHotkeysCodes(macCodes, false);
+console.log('Mac codes are: ' + winCodes.toString());
+
 console.log('waiting for hotkeys...');
 /*setTimeout(() => {
 	console.log("Disable hotkeys.");
