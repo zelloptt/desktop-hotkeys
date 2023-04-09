@@ -70,13 +70,22 @@ bool HotKeyManager::Valid() const
 
 bool HotKeyManager::NotifyHotKeyEvent(unsigned uCode, bool bPressed)
 {
+    auto callback = []( Napi::Env env, Napi::Function jsCallback, int* value ) {
+      // Transform native data into JS data, passing it to the provided
+      // `jsCallback` -- the TSFN's JavaScript function.
+      jsCallback.Call( {Napi::Number::New( env, *value )} );
+      delete value;
+    };
+
     if (this->_DisabledState) {
         return false;
     }
 	TCONT::iterator cit = _hotkeys.find(uCode);
 	if (cit != _hotkeys.end()) {
-		Napi::ThreadSafeFunction& tsfn = bPressed ? cit->second.first : cit->second.second;
-		tsfn.NonBlockingCall();
+		const Napi::ThreadSafeFunction& tsfn = bPressed ? cit->second.first : cit->second.second;
+		int* pCode = new int;
+		*pCode = uCode;
+		tsfn.NonBlockingCall(pCode, callback);
 		return true;
 	}
 	return false;
