@@ -187,7 +187,6 @@ void HotKeyManager::DisableAllShortcuts(bool bDisable)
         return;
     }
     _DisabledState = bDisable;
-    /*
     for (std::map<unsigned, WPARAM>::const_iterator it = _hotkeyIds.begin(); it != _hotkeyIds.end(); it ++) {
         DWORD dwId = it->first;
         if (bDisable) {
@@ -196,7 +195,6 @@ void HotKeyManager::DisableAllShortcuts(bool bDisable)
 		    SendMessage(_hWnd, WM_REGISTER_HOTKEY, it->second, dwId);
         }
     }
-    */
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
