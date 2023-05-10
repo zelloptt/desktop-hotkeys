@@ -843,7 +843,7 @@ Napi::Number HotKeys::checkHotkeyConflicts(const Napi::CallbackInfo& info)
    		arrKeys = info[1].As<Napi::Array>();
    	} else {
    		logger_proc(LOG_LEVEL_ERROR, "(DHK): invalid checkHotkeyConflicts arguments: expected number + array");
-   		Napi::TypeError::New(env, "invalid checkHotkeyConflicts arguments: expected array").ThrowAsJavaScriptException();
+   		Napi::TypeError::New(env, "invalid checkHotkeyConflicts arguments: expected number + array").ThrowAsJavaScriptException();
    		return Napi::Number::New(env, 0);
    	}
    	if (arrKeys.Length() == 0) {

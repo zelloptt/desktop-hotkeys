@@ -113,25 +113,32 @@ std::string HotKeyManager::GenerateAtomName(WPARAM wKeys)
 	return sAtomName;
 }
 
-DWORD HotKeyManager::checkShortcut(WORD wKeyCode, WORD wMod)
+DWORD HotKeyManager::checkShortcut(DWORD dwExcludeShortcutId, WORD wKeyCode, WORD wMod)
 {
 	if (!Valid()) {
 		return 0; // unable to verify!
 	}
     WPARAM wParam = MAKEWPARAM(wKeyCode, wMod);
+    // check if hotkey already registered
+    for (std::map<unsigned, WPARAM>::const_iterator it = _hotkeyIds.begin(); it != _hotkeyIds.end(); it ++) {
+        if (it->second == wParam) {
+            return it->first;
+        }
+    }
+    // existing hotkey not found, try to register new hotkey in order to check for other conflicts
     std::string sName = HotKeyManager::GenerateAtomName(wParam);
     ATOM atm = GlobalFindAtomA(sName.c_str());
     if (atm != 0) {
-        return 2; // conflict!
+        return 0xFFFFFFFF; // conflict!
     }
     atm = GlobalAddAtomA(sName.c_str());
     if (atm == 0) {
-        return 2; // unable to generate unique key id
+        return 0xFFFFFFFF; // unable to generate unique key id
     }
     bool hotKeyRegistered = 0 != SendMessage(_hWnd, WM_REGISTER_HOTKEY, wParam, atm);
     GlobalDeleteAtom(atm);
     if (!hotKeyRegistered) {
-        return 1;
+        return 0xFFFFFFFF; // unable to register such a hotkey
     }
     SendMessage(_hWnd, WM_UNREGISTER_HOTKEY, atm, 0);
     return 0;

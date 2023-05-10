@@ -258,33 +258,39 @@ Napi::Number HotKeys::setHotkeysEnabled(const Napi::CallbackInfo& info)
 Napi::Number HotKeys::checkHotkeyConflicts(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
-	Napi::Array arrKeys;
-	unsigned retValue = 0;
-	bool keysAreVirtualCodes = true;
-	unsigned argCount = info.Length();
+   	unsigned argCount = info.Length();
 	while (argCount > 0) {
-		if (info[argCount - 1].IsEmpty() || info[argCount - 1].IsUndefined() || info[argCount - 1].IsNull()) {
-			argCount = argCount - 1;
-		} else {
-			break;
-		}
-	}
-
-	if (argCount > 0 && info[0].IsArray()) {
-		arrKeys = info[0].As<Napi::Array>();
-		if (argCount > 1 && info[1].IsBoolean()) {
-			keysAreVirtualCodes = info[1].As<Napi::Boolean>();
-		}
-	} else {
-		log("(DHK): invalid checkHotkeyConflicts arguments: Array or Array+Boolean is expected");
-		Napi::TypeError::New(env, "invalid checkHotkeyConflicts arguments: Array or Array+Boolean is expected").ThrowAsJavaScriptException();
-		return Napi::Number::New(env, retValue);
-	}
-
+   		if (info[argCount - 1].IsEmpty() || info[argCount - 1].IsUndefined() || info[argCount - 1].IsNull()) {
+   			argCount = argCount - 1;
+   		} else {
+   			break;
+   		}
+   	}
+   	unsigned uExcludeHotkeyId = 0;
+   	unsigned retValue = 0;
+    Napi::Array arrKeys;
+   	if (argCount >= 1 && info[0].IsNumber()) {
+        uExcludeHotkeyId = info[0].As<Napi::Number>().Uint32Value();
+    }
+    if (argCount >= 2 && info[1].IsArray()) {
+        arrKeys = info[1].As<Napi::Array>();
+    } else {
+        log("(DHK): invalid checkHotkeyConflicts arguments: expected number + array");
+       	Napi::TypeError::New(env, "invalid checkHotkeyConflicts arguments: expected number + array").ThrowAsJavaScriptException();
+       	return Napi::Number::New(env, 0);
+    }
+    if (arrKeys.Length() == 0) {
+        log("(DHK): checkHotkeyConflicts received empty array of keyCodes; early return");
+        return Napi::Number::New(env, 0);
+    }
     WORD wKeyCode = 0, wMod = 0;
+    bool keysAreVirtualCodes = true;
+    if (argCount > 2 && info[2].IsBoolean()) {
+        keysAreVirtualCodes = info[2].As<Napi::Boolean>();
+    }
     combineKeyCodes(arrKeys, keysAreVirtualCodes, wKeyCode, wMod);
     if (g_pHotKeyManager && g_pHotKeyManager->Valid()) {
-        retValue = g_pHotKeyManager->checkShortcut(wKeyCode, wMod);
+        retValue = g_pHotKeyManager->checkShortcut(uExcludeHotkeyId, wKeyCode, wMod);
     }
 	return Napi::Number::New(env, retValue);
 }
