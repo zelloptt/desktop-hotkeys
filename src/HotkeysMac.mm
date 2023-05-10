@@ -91,6 +91,10 @@ public:
     	}
     	return 0;
 	}
+
+	unsigned getId() const {
+        return _id;
+    }
 };
 
 class HotKeyStore
@@ -105,7 +109,7 @@ public:
 
 	unsigned create(const Napi::ThreadSafeFunction& pressed, const Napi::ThreadSafeFunction& released, const std::vector<unsigned>& keyCodes)
 	{
-	    if (checkConflicts(keyCodes) > 0) {
+	    if (checkConflicts(0, keyCodes) > 0) {
        	    return 0;
         }
 		unsigned id = ++nextHotkeyId;
@@ -139,15 +143,20 @@ public:
 	    _disabled = disabled;
 	}
 
-	unsigned checkConflicts(const std::vector<unsigned>& keyCodes) const {
+	unsigned checkConflicts(unsigned uIdToSkip, const std::vector<unsigned>& keyCodes) const {
 	    unsigned uMaxConflictLevel = 0;
+	    unsigned uConfictHotkeyId = 0;
 		for (TCONT::const_iterator cit = _hotkeys.begin(); cit != _hotkeys.end(); ++cit) {
+		    if (cit->first == uIdToSkip) {
+                continue;
+            }
 		    unsigned uConflictLevel = cit->second->checkConflictLevel(keyCodes);
             if (uConflictLevel > uMaxConflictLevel) {
            	    uMaxConflictLevel = uConflictLevel;
+           	    uConfictHotkeyId = cit->first;
            	}
         }
-        return uMaxConflictLevel;
+        return uConfictHotkeyId;
 	}
 } hotKeyStore;
 
@@ -825,11 +834,15 @@ Napi::Number HotKeys::checkHotkeyConflicts(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
    	unsigned argCount = info.Length();
+   	unsigned uExcludeHotkeyId = 0;
     Napi::Array arrKeys;
-   	if (argCount >= 1 && info[0].IsArray()) {
-   		arrKeys = info[0].As<Napi::Array>();
+   	if (argCount >= 1 && info[0].IsNumber()) {
+        uExcludeHotkeyId = info[0].As<Napi::Number>().Uint32Value();
+    }
+   	if (argCount >= 2 && info[1].IsArray()) {
+   		arrKeys = info[1].As<Napi::Array>();
    	} else {
-   		logger_proc(LOG_LEVEL_ERROR, "(DHK): invalid checkHotkeyConflicts arguments: expected array");
+   		logger_proc(LOG_LEVEL_ERROR, "(DHK): invalid checkHotkeyConflicts arguments: expected number + array");
    		Napi::TypeError::New(env, "invalid checkHotkeyConflicts arguments: expected array").ThrowAsJavaScriptException();
    		return Napi::Number::New(env, 0);
    	}
@@ -842,5 +855,5 @@ Napi::Number HotKeys::checkHotkeyConflicts(const Napi::CallbackInfo& info)
     	Napi::Value key = arrKeys[idx];
     	keyCodes[idx] = key.As<Napi::Number>().Uint32Value();
     }
-    return Napi::Number::New(env, hotKeyStore.checkConflicts(keyCodes));
+    return Napi::Number::New(env, hotKeyStore.checkConflicts(uExcludeHotkeyId, keyCodes));
 }

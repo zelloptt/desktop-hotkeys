@@ -95,8 +95,8 @@ class ShortcutHelper {
 		return this.impl.convertHotkeysCodes(keyCodes, keysAreVKC);
 	}
 
-	checkHotkeyConflicts(keyCodes) {
-		return this.impl.checkHotkeyConflicts(keyCodes);
+	checkHotkeyConflicts(excludeId, keyCodes) {
+		return this.impl.checkHotkeyConflicts(excludeId, keyCodes);
 	}
 }
 
