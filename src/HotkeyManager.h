@@ -21,7 +21,7 @@ public:
 	bool Valid() const;
 	bool NotifyHotKeyEvent(unsigned uCode, bool bPressed);
 	void UpdateCallbacks(unsigned uCode, bool bSetInUse);
-	DWORD checkShortcut(DWORD dwExcludeShortcutId, WORD wKeyCode, WORD wMod);
+	DWORD checkShortcut(DWORD dwExcludeShortcutId, WORD wKeyCode, WORD wMod, bool fullCheck);
 	DWORD registerShortcut(WORD wKeyCode, WORD wMod, const Napi::ThreadSafeFunction& tsfPress, const Napi::ThreadSafeFunction& tsfRelease);
 	DWORD unregisterShortcut(DWORD dwId);
 	DWORD unregisterAllShortcuts();

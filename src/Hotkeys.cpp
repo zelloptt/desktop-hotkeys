@@ -290,7 +290,7 @@ Napi::Number HotKeys::checkHotkeyConflicts(const Napi::CallbackInfo& info)
     }
     combineKeyCodes(arrKeys, keysAreVirtualCodes, wKeyCode, wMod);
     if (g_pHotKeyManager && g_pHotKeyManager->Valid()) {
-        retValue = g_pHotKeyManager->checkShortcut(uExcludeHotkeyId, wKeyCode, wMod);
+        retValue = g_pHotKeyManager->checkShortcut(uExcludeHotkeyId, wKeyCode, wMod, true);
     }
 	return Napi::Number::New(env, retValue);
 }

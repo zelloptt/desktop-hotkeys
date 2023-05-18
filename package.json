@@ -1,6 +1,6 @@
 {
   "name": "desktop-hotkeys",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "This package provides press/release callbacks for system-wide hotkeys on Windows and Mac",
   "main": "index.js",
   "gypfile": true,
@@ -8,7 +8,7 @@
     "install": "node-pre-gyp install --fallback-to-build",
     "make": "node-pre-gyp rebuild --build-from-source package publish",
     "make32": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=ia32 package publish",
-    "make64": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=x64 package publish",
+    "make64": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=x64 package unpublish publish",
     "makeM1": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=arm64 package publish",
     "makeM11": "node-pre-gyp rebuild --build-from-source --verbose --target_arch=arm64",
     "maked": "node-pre-gyp rebuild --build-from-source --debug --verbose",

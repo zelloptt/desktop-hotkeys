@@ -113,7 +113,7 @@ std::string HotKeyManager::GenerateAtomName(WPARAM wKeys)
 	return sAtomName;
 }
 
-DWORD HotKeyManager::checkShortcut(DWORD dwExcludeShortcutId, WORD wKeyCode, WORD wMod)
+DWORD HotKeyManager::checkShortcut(DWORD dwExcludeShortcutId, WORD wKeyCode, WORD wMod, bool fullCheck)
 {
 	if (!Valid()) {
 		return 0; // unable to verify!
@@ -122,8 +122,11 @@ DWORD HotKeyManager::checkShortcut(DWORD dwExcludeShortcutId, WORD wKeyCode, WOR
     // check if hotkey already registered
     for (std::map<unsigned, WPARAM>::const_iterator it = _hotkeyIds.begin(); it != _hotkeyIds.end(); it ++) {
         if (it->second == wParam) {
-            return it->first;
+            return it->first == dwExcludeShortcutId ? 0 : it->first;
         }
+    }
+    if (!fullCheck) {
+        return 0;
     }
     // existing hotkey not found, try to register new hotkey in order to check for other conflicts
     std::string sName = HotKeyManager::GenerateAtomName(wParam);
@@ -150,6 +153,9 @@ DWORD HotKeyManager::registerShortcut(WORD wKeyCode, WORD wMod, const Napi::Thre
 	if (!Valid()) {
 		return 0;
 	}
+	if (0 != this->checkShortcut(0, wKeyCode, wMod, false)) {
+	    return 0;
+    }
 	WPARAM wParam = MAKEWPARAM(wKeyCode, wMod);
 	ATOM atm = GlobalAddAtomA(HotKeyManager::GenerateAtomName(wParam).c_str());
 	if (atm) {
