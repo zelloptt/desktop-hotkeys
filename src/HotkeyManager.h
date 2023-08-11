@@ -19,10 +19,12 @@ public:
 	HotKeyManager();
 	~HotKeyManager();
 	bool Valid() const;
-	void NotifyHotKeyEvent(unsigned uCode, bool bPressed);
+	bool NotifyHotKeyEvent(unsigned uCode, bool bPressed);
 	void UpdateCallbacks(unsigned uCode, bool bSetInUse);
+	DWORD checkShortcut(DWORD dwExcludeShortcutId, WORD wKeyCode, WORD wMod, bool fullCheck);
 	DWORD registerShortcut(WORD wKeyCode, WORD wMod, const Napi::ThreadSafeFunction& tsfPress, const Napi::ThreadSafeFunction& tsfRelease);
 	DWORD unregisterShortcut(DWORD dwId);
 	DWORD unregisterAllShortcuts();
 	void DisableAllShortcuts(bool bDisable);
+	static std::string GenerateAtomName(WPARAM wKeys);
 };

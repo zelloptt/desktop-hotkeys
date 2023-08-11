@@ -5,6 +5,7 @@
 #import <AppKit/AppKit.h>
 
 #include "../libuiohook/include/uiohook.h"
+#include "../libuiohook/src/darwin/input_helper.h"
 #include <wchar.h>
 #include <map>
 #include <set>
@@ -36,13 +37,14 @@ class HotKey
 	Napi::ThreadSafeFunction _pressedCb;
 	Napi::ThreadSafeFunction _releasedCb;
 	std::map<unsigned, bool> _keyPressedState;
+	const unsigned _id;
 	unsigned _keysPressed;
 	const unsigned _keysCount;
 public:
-	HotKey(Napi::ThreadSafeFunction pressedCb, Napi::ThreadSafeFunction releasedCb, unsigned* keyCodes, unsigned keyCount) :
-		_pressedCb(pressedCb), _releasedCb(releasedCb), _keysPressed(0), _keysCount(keyCount)
+	HotKey(Napi::ThreadSafeFunction pressedCb, Napi::ThreadSafeFunction releasedCb, const std::vector<unsigned>& keyCodes, unsigned id) :
+		_pressedCb(pressedCb), _releasedCb(releasedCb), _id(id), _keysPressed(0), _keysCount(keyCodes.size())
 	{
-		for (size_t idx = 0; idx < keyCount; ++idx) {
+		for (size_t idx = 0; idx < _keysCount; ++idx) {
 			_keyPressedState[keyCodes[idx]] = false;
 		}
 	}
@@ -53,26 +55,46 @@ public:
 		if (cit != _keyPressedState.end()) {
 			if (cit->second != pressed) {
 				cit->second = pressed;
+				int* pid = new int;
+				*pid = static_cast<int>(_id);
+			    auto callback = []( Napi::Env env, Napi::Function jsCallback, int* pHotkeyId ) {
+                    jsCallback.Call( {Napi::Number::New(env, *pHotkeyId)} );
+                    delete pHotkeyId;
+                };
+
 				if (!pressed && _keysPressed == _keysCount) {
-					_releasedCb.NonBlockingCall();
+					_releasedCb.NonBlockingCall(pid, callback);
 				}
 				_keysPressed += (pressed ? 1 : -1);
 				if (pressed && _keysPressed == _keysCount) {
-					_pressedCb.NonBlockingCall();
+					_pressedCb.NonBlockingCall(pid, callback);
 				}
 			}
 		}
 	}
 
-	bool hasConflict(unsigned* keyCodes, unsigned keyCount) {
+	unsigned checkConflictLevel(const std::vector<unsigned>& keyCodes) {
 		std::map<unsigned, bool>::iterator ce = _keyPressedState.end();
+		const size_t keyCount = keyCodes.size();
+		size_t equalKeysCount = 0;
 		for (size_t idx = 0; idx < keyCount; ++idx) {
-    		if (ce == _keyPressedState.find(keyCodes[idx])) {
-    		    return false;
+    		if (ce != _keyPressedState.find(keyCodes[idx])) {
+    		    ++equalKeysCount;
     		}
     	}
-    	return true;
+    	if (equalKeysCount == keyCount) {
+    	    // all new keys already in use here
+    	    return keyCount == _keyPressedState.size() ? 2 : 1;
+    	} else if (equalKeysCount == _keyPressedState.size()) {
+    	    // all my key will be used as a new hotkey
+    	    return 1;
+    	}
+    	return 0;
 	}
+
+	unsigned getId() const {
+        return _id;
+    }
 };
 
 class HotKeyStore
@@ -85,15 +107,13 @@ public:
     {
     }
 
-	unsigned create(const Napi::ThreadSafeFunction& pressed, const Napi::ThreadSafeFunction& released, unsigned* keyCodes, unsigned keyCount)
+	unsigned create(const Napi::ThreadSafeFunction& pressed, const Napi::ThreadSafeFunction& released, const std::vector<unsigned>& keyCodes)
 	{
-	    for (TCONT::const_iterator cit = _hotkeys.begin(); cit != _hotkeys.end(); ++cit) {
-        	if (cit->second->hasConflict(keyCodes, keyCount)) {
-        	    return 0;
-        	}
+	    if (checkConflicts(0, keyCodes) > 0) {
+       	    return 0;
         }
 		unsigned id = ++nextHotkeyId;
-		_hotkeys[id] = std::unique_ptr<HotKey>(new HotKey(pressed, released, keyCodes, keyCount));
+		_hotkeys[id] = std::unique_ptr<HotKey>(new HotKey(pressed, released, keyCodes, id));
 		return id;
 	}
 
@@ -121,6 +141,22 @@ public:
 	void changeState(bool disabled)
 	{
 	    _disabled = disabled;
+	}
+
+	unsigned checkConflicts(unsigned uIdToSkip, const std::vector<unsigned>& keyCodes) const {
+	    unsigned uMaxConflictLevel = 0;
+	    unsigned uConfictHotkeyId = 0;
+		for (TCONT::const_iterator cit = _hotkeys.begin(); cit != _hotkeys.end(); ++cit) {
+		    if (cit->first == uIdToSkip) {
+                continue;
+            }
+		    unsigned uConflictLevel = cit->second->checkConflictLevel(keyCodes);
+            if (uConflictLevel > uMaxConflictLevel) {
+           	    uMaxConflictLevel = uConflictLevel;
+           	    uConfictHotkeyId = cit->first;
+           	}
+        }
+        return uConfictHotkeyId;
 	}
 } hotKeyStore;
 
@@ -664,7 +700,6 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 	Napi::Array arrKeys;
 	Napi::Function fnPressed;
 	Napi::Function fnReleased;
-	bool keysAreVirtualCodes = false;
 	unsigned argCount = info.Length();
 	while (argCount > 0) {
 		if (info[argCount - 1].IsEmpty() || info[argCount - 1].IsUndefined() || info[argCount - 1].IsNull()) {
@@ -678,9 +713,6 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 		arrKeys = info[0].As<Napi::Array>();
 		fnPressed = info[1].As<Napi::Function>();
 		fnReleased = info[2].As<Napi::Function>();
-		if (argCount >= 4 && info[3].IsBoolean()) {
-			keysAreVirtualCodes = info[3].As<Napi::Boolean>();
-		}
 	} else if (argCount == 2 && info[0].IsArray() && info[1].IsFunction()) {
 		arrKeys = info[0].As<Napi::Array>();
 		fnPressed = info[1].As<Napi::Function>();
@@ -689,7 +721,7 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 		Napi::TypeError::New(env, "invalid registerShortcut arguments: Array/Function/Function or Array/Function expected").ThrowAsJavaScriptException();
 		return Napi::Number::New(env, 0);
 	}
-	unsigned* keyCodes = new unsigned[arrKeys.Length()];
+	std::vector<unsigned> keyCodes(arrKeys.Length());
 	for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
 		Napi::Value key = arrKeys[idx];
 		keyCodes[idx] = key.As<Napi::Number>().Uint32Value();
@@ -707,8 +739,7 @@ Napi::Number HotKeys::registerShortcut(const Napi::CallbackInfo& info)
 		"desktop-hotkeys released cb ",
 		0,
 		1),
-		keyCodes,
-		arrKeys.Length()
+		keyCodes
 	);
 	if (keyId == 0) {
 	    logger_proc(LOG_LEVEL_ERROR, "(DHK): failed to create the new hotkey");
@@ -767,4 +798,62 @@ Napi::Number HotKeys::setHotkeysEnabled(const Napi::CallbackInfo& info)
 	    hotKeyStore.changeState(!bEnable);
     }
     return Napi::Number::New(env, 0);
+}
+
+unsigned keycode_convert(unsigned code, bool toWinVK);
+
+Napi::Array HotKeys::convertHotkeysCodes(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+   	unsigned argCount = info.Length();
+    Napi::Array arrKeys;
+    bool keysAreVirtualCodes = false;
+   	if (argCount > 0 && info[0].IsArray()) {// not used in mac: info[1].IsBoolean()) {
+   		arrKeys = info[0].As<Napi::Array>();
+   		if (argCount > 1 && info[1].IsBoolean()) {
+        	keysAreVirtualCodes = info[1].As<Napi::Boolean>();
+        }
+   	} else {
+   		logger_proc(LOG_LEVEL_ERROR, "(DHK): invalid convertHotkeysCodes arguments: expected array and boolean");
+   		Napi::TypeError::New(env, "invalid convertHotkeysCodes arguments: expected array and boolean").ThrowAsJavaScriptException();
+   		return Napi::Array::New(env, 0);
+   	}
+   	if (arrKeys.Length() == 0) {
+   	    logger_proc(LOG_LEVEL_WARN, "(DHK): convertHotkeysCodes received empty array of keyCodes; early return");
+   	    return Napi::Array::New(env, 0);
+   	}
+	Napi::Array arr = Napi::Array::New(env, arrKeys.Length());
+    for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
+    	Napi::Value key = arrKeys[idx];
+    	arr[idx] = keycode_convert(key.As<Napi::Number>().Uint32Value(), !keysAreVirtualCodes);
+    }
+	return arr;
+}
+
+Napi::Number HotKeys::checkHotkeyConflicts(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+   	unsigned argCount = info.Length();
+   	unsigned uExcludeHotkeyId = 0;
+    Napi::Array arrKeys;
+   	if (argCount >= 1 && info[0].IsNumber()) {
+        uExcludeHotkeyId = info[0].As<Napi::Number>().Uint32Value();
+    }
+   	if (argCount >= 2 && info[1].IsArray()) {
+   		arrKeys = info[1].As<Napi::Array>();
+   	} else {
+   		logger_proc(LOG_LEVEL_ERROR, "(DHK): invalid checkHotkeyConflicts arguments: expected number + array");
+   		Napi::TypeError::New(env, "invalid checkHotkeyConflicts arguments: expected number + array").ThrowAsJavaScriptException();
+   		return Napi::Number::New(env, 0);
+   	}
+   	if (arrKeys.Length() == 0) {
+   	    logger_proc(LOG_LEVEL_WARN, "(DHK): checkHotkeyConflicts received empty array of keyCodes; early return");
+   	    return Napi::Number::New(env, 0);
+   	}
+   	std::vector<unsigned> keyCodes(arrKeys.Length());
+    for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
+    	Napi::Value key = arrKeys[idx];
+    	keyCodes[idx] = key.As<Napi::Number>().Uint32Value();
+    }
+    return Napi::Number::New(env, hotKeyStore.checkConflicts(uExcludeHotkeyId, keyCodes));
 }

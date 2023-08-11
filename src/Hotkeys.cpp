@@ -9,6 +9,52 @@ extern bool g_bVerboseMode;
 
 bool log(const char* format, ...);
 
+bool combineKeyCodes(const Napi::Array& arrKeys, bool keysAreVirtualCodes, WORD& wKeyCode, WORD& wMod)
+{
+	wKeyCode = wMod = 0;
+	for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
+		Napi::Value v = arrKeys[idx];
+		DWORD dwCode = v.As<Napi::Number>().Uint32Value();
+		DWORD dw = keysAreVirtualCodes ? dwCode : MapVirtualKey(dwCode, MAPVK_VSC_TO_VK);
+		switch (dw) {
+			case 0:
+			{
+				char szErrBuf[64];
+				if (keysAreVirtualCodes) {
+					sprintf(szErrBuf, "invalid arguments: virtual key code cannot be 0");
+				} else {
+					sprintf(szErrBuf, "Can't convert scancode %d(%X) to VKCode", dwCode, dwCode);
+				}
+				log(szErrBuf);
+				return false;
+			}
+			break;
+			case VK_CONTROL:
+			case VK_LCONTROL:
+			case VK_RCONTROL:
+				wMod = wMod | MOD_CONTROL;
+				break;
+			case VK_SHIFT:
+			case VK_LSHIFT:
+			case VK_RSHIFT:
+				wMod = wMod | MOD_SHIFT;
+				break;
+			case VK_MENU:
+			case VK_LMENU:
+			case VK_RMENU:
+				wMod = wMod | MOD_ALT;
+				break;
+			case VK_LWIN:
+			case VK_RWIN:
+				wMod = wMod | MOD_WIN;
+				break;
+			default:
+				wKeyCode = static_cast<WORD>(dw);
+		}
+	}
+	return true;
+}
+
 Napi::Number HotKeys::start(const Napi::CallbackInfo& info)
 {
 	Napi::Env env = info.Env();
@@ -209,6 +255,76 @@ Napi::Number HotKeys::setHotkeysEnabled(const Napi::CallbackInfo& info)
     return Napi::Number::New(env, 0);
 }
 
+Napi::Number HotKeys::checkHotkeyConflicts(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+   	unsigned argCount = info.Length();
+	while (argCount > 0) {
+   		if (info[argCount - 1].IsEmpty() || info[argCount - 1].IsUndefined() || info[argCount - 1].IsNull()) {
+   			argCount = argCount - 1;
+   		} else {
+   			break;
+   		}
+   	}
+   	unsigned uExcludeHotkeyId = 0;
+   	unsigned retValue = 0;
+    Napi::Array arrKeys;
+   	if (argCount >= 1 && info[0].IsNumber()) {
+        uExcludeHotkeyId = info[0].As<Napi::Number>().Uint32Value();
+    }
+    if (argCount >= 2 && info[1].IsArray()) {
+        arrKeys = info[1].As<Napi::Array>();
+    } else {
+        log("(DHK): invalid checkHotkeyConflicts arguments: expected number + array");
+       	Napi::TypeError::New(env, "invalid checkHotkeyConflicts arguments: expected number + array").ThrowAsJavaScriptException();
+       	return Napi::Number::New(env, 0);
+    }
+    if (arrKeys.Length() == 0) {
+        log("(DHK): checkHotkeyConflicts received empty array of keyCodes; early return");
+        return Napi::Number::New(env, 0);
+    }
+    WORD wKeyCode = 0, wMod = 0;
+    bool keysAreVirtualCodes = true;
+    if (argCount > 2 && info[2].IsBoolean()) {
+        keysAreVirtualCodes = info[2].As<Napi::Boolean>();
+    }
+    combineKeyCodes(arrKeys, keysAreVirtualCodes, wKeyCode, wMod);
+    if (g_pHotKeyManager && g_pHotKeyManager->Valid()) {
+        retValue = g_pHotKeyManager->checkShortcut(uExcludeHotkeyId, wKeyCode, wMod, true);
+    }
+	return Napi::Number::New(env, retValue);
+}
+
+unsigned keycode_convert(unsigned code, bool toWinVK);
+
+Napi::Array HotKeys::convertHotkeysCodes(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+   	unsigned argCount = info.Length();
+    Napi::Array arrKeys;
+    bool keysAreVirtualCodes = true;
+   	if (argCount > 0 && info[0].IsArray()) {// not used in mac: info[1].IsBoolean()) {
+   		arrKeys = info[0].As<Napi::Array>();
+		if (argCount > 1 && info[1].IsBoolean()) {
+			keysAreVirtualCodes = info[1].As<Napi::Boolean>();
+		}
+   	} else {
+   		log("(DHK): invalid convertHotkeysCodes arguments: expected array and boolean");
+   		Napi::TypeError::New(env, "invalid convertHotkeysCodes arguments: expected array and boolean").ThrowAsJavaScriptException();
+   		return Napi::Array::New(env, 0);
+   	}
+   	if (arrKeys.Length() == 0) {
+   	    log("(DHK): convertHotkeysCodes received empty array of keyCodes; early return");
+   	    return Napi::Array::New(env, 0);
+   	}
+    Napi::Array arr = Napi::Array::New(env, arrKeys.Length());
+    for (size_t idx = 0; idx < arrKeys.Length(); ++idx) {
+    	Napi::Value key = arrKeys[idx];
+    	arr[idx] = keycode_convert(key.As<Napi::Number>().Uint32Value(), !keysAreVirtualCodes);
+    }
+	return arr;
+}
+
 Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 {
 	exports.Set("start", Napi::Function::New(env, HotKeys::start));
@@ -223,5 +339,7 @@ Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 	exports.Set("macShowAccessibilitySettings", Napi::Function::New(env, HotKeys::macShowAccessibilitySettings));
 	exports.Set("macSubscribeAccessibilityUpdates", Napi::Function::New(env, HotKeys::macSubscribeAccessibilityUpdates));
 	exports.Set("macUnsubscribeAccessibilityUpdates", Napi::Function::New(env, HotKeys::macUnsubscribeAccessibilityUpdates));
+	exports.Set("convertHotkeysCodes", Napi::Function::New(env, HotKeys::convertHotkeysCodes));
+	exports.Set("checkHotkeyConflicts", Napi::Function::New(env, HotKeys::checkHotkeyConflicts));
 	return exports;
 }
