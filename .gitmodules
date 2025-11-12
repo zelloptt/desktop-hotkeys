@@ -1,4 +1,3 @@
 [submodule "libuiohook"]
 	path = libuiohook
 	url = https://github.com/zelloptt/libuiohook
-	branch = desktop-hotkeys
