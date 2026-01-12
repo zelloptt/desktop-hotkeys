@@ -78,3 +78,12 @@ Napi::Boolean HotKeys::macCheckAccessibilityGranted(const Napi::CallbackInfo& in
 	return emptyImpl<Napi::Boolean, bool>(info, true);
 }
 
+Napi::Array HotKeys::convertHotkeysCodes(const Napi::CallbackInfo& info)
+{
+	return return emptyImpl<Napi::Array, size_t>(env, 0);
+}
+
+Napi::Number checkHotkeyConflicts(const Napi::CallbackInfo& info);
+{
+	return emptyImpl<Napi::Number, unsigned>(info, 0);
+}
