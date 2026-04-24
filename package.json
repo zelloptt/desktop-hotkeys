@@ -1,5 +1,5 @@
 {
-  "name": "desktop-hotkeys",
+  "name": "@zelloptt/desktop-hotkeys",
   "version": "1.9.2",
   "description": "This package provides press/release callbacks for system-wide hotkeys on Windows and Mac",
   "main": "index.js",
