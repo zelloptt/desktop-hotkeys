@@ -1,4 +1,5 @@
 #include "Hotkeys.h"
+#define TARGET_OS_MAC
 #import <Foundation/Foundation.h>
 #import <ApplicationServices/ApplicationServices.h>
 #import <AppKit/AppKit.h>
