@@ -11,7 +11,8 @@
 	                "src/HotkeysMac.mm",
 	                "src/AccessibilityMac.mm",
 	                "src/AddonMac.mm",
-      		        "src/main.cpp"
+      		        "src/main.cpp",
+      		        "src/KeyMapping.cpp"
       		    ],
                 'configurations': {
                     'Debug': {
@@ -42,7 +43,8 @@
       	  		"sources": [
             	"src/main.cpp",
 	            "src/Hotkeys.cpp",
-				"src/HotkeyManager.cpp"
+				"src/HotkeyManager.cpp",
+				"src/KeyMapping.cpp"
  			]                     
       		}],
         	["OS=='linux'", {

@@ -17,6 +17,8 @@ namespace HotKeys
 	Napi::Number macSubscribeAccessibilityUpdates(const Napi::CallbackInfo& info);
 	Napi::Number macUnsubscribeAccessibilityUpdates(const Napi::CallbackInfo& info);
 	Napi::Number setHotkeysEnabled(const Napi::CallbackInfo& info);
+	Napi::Array convertHotkeysCodes(const Napi::CallbackInfo& info);
+	Napi::Number checkHotkeyConflicts(const Napi::CallbackInfo& info);
 }
 
 Napi::Object InitAll(Napi::Env env, Napi::Object exports);
